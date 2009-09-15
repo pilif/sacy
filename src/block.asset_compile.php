@@ -1,7 +1,7 @@
 <?php
 
 define("ASSET_COMPILE_OUTPUT_DIR", APP_ROOT.'/pcache/asset_compile');
-define("ASSET_COMPILE_URL_ROOT", '/csscache');
+define("ASSET_COMPILE_URL_ROOT", '/assetcache');
 
 function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
     if (!$repeat){
