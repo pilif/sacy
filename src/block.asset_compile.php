@@ -2,6 +2,7 @@
 
 define("ASSET_COMPILE_OUTPUT_DIR", APP_ROOT.'/pcache/asset_compile');
 define("ASSET_COMPILE_URL_ROOT", '/assetcache');
+//define("DEBUG", true);
 
 function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
     if (!$repeat){
@@ -66,7 +67,7 @@ function asset_compile_generate_cache(&$smarty, $cssfiles){
     $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key.css";
     $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key.css";
 
-    if (file_exists($cfile)){
+    if (file_exists($cfile) && (!defined('DEBUG') || !DEBUG)){
         return $pub;
     }
 
