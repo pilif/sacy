@@ -116,6 +116,7 @@ function asset_compile_write_cache(&$smarty, $cfile, $files){
             $smarty->trigger_error("Error accessing CSS-File: $file");
             continue;
         }
+        $css = asset_compile_rewrite_cssurl($css, $file);
         $css = str_replace("\r\n", "\n", $css);
         $css = str_replace("\r", "\n", $css);
         $css = str_replace("\n", " ", $css);
@@ -126,6 +127,38 @@ function asset_compile_write_cache(&$smarty, $cfile, $files){
     fclose($fhl);
     unlink($lockfile);
     return true;
+}
+
+function asset_compile_rewrite_cssurl($css, $src){
+    // I have to check this pattern by pattern, because quoted urls could
+    // contain the other character in them, thus breaking the rewrite if
+    // I'd stop at the first matching character.
+    //
+    // Also storing the quote character to quote the url with after the
+    // replacement.
+    $patterns = array( array('#url\s*\(\s*((?:\.\./)+)(.*?)\s*\)#i', '"'),
+                       array('#url\s*\(\s*\'((?:\.\./)+)(.*?)\'\s*\)#i', "'"),
+                       array('#url\s*\(\s*\"((?:\.\./)+)(.*?)\"\s*\)#i', '"')
+                     );
+
+    foreach($patterns as $pattern){
+        list($urlpattern, $q) = $pattern;
+
+        if (!(preg_match($urlpattern, $css, $m)))
+            continue;
+
+        $pc = substr_count($m[1], '..');
+
+        $pubpath = explode('/', dirname(substr($src, strlen($_SERVER['DOCUMENT_ROOT']))));
+        array_splice($pubpath, count($pubpath)-$pc);
+        $d = implode('/', $pubpath)."/";
+
+        $css = preg_replace($urlpattern,
+                   "url($q$d\\2$q)", $css);
+    }
+    return $css;
+
+
 }
 
 ?>
