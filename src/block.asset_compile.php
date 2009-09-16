@@ -4,6 +4,8 @@ define("ASSET_COMPILE_OUTPUT_DIR", APP_ROOT.'/pcache/asset_compile');
 define("ASSET_COMPILE_URL_ROOT", '/assetcache');
 //define("DEBUG", true);
 
+include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
+
 function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
     if (!$repeat){
         // don't shoot me, but all tried using the dom-parser and removing elements
@@ -13,152 +15,76 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         //
         // So, let's go back to good old regexps :-)
 
-        $link_tag_pattern = '#<\s*link\s+(.*)\s*(?:/>|>(?:.*)</link>)#Ui';
-        if(!preg_match_all($link_tag_pattern, $content, $links))
-            return $content; // nothing to do
+        $tags = array('link', 'script');
+        $tag_pattern = '#<\s*T\s+(.*)\s*(?:/>|>(.*)</T>)#Ui';
+        $work = array();
+        $aindex = 0;
 
-        $cssfiles = array();
-        foreach($links[1] as $link){
-            $href = "";
-
-            // handle href="foo'bar"
-            if (preg_match('#href\s*=\s*"\s*(.*)\s*"#U', $link, $m)){
-                $href = html_entity_decode($m[1]);
+        // first assembling all work. The idea is that, if sorted by descending
+        // location offset, we can selectively remove tags.
+        //
+        // We'll need that to conditionally handle tags (like jTemplate's
+        // <script type="text/html" that should remain)
+        foreach($tags as $tag){
+            $p = str_replace('T', preg_quote($tag), $tag_pattern);
+            if(preg_match_all($p, $content, $ms, PREG_OFFSET_CAPTURE)){
+                foreach($ms[1] as $i => $m)
+                   $work[] = array($tag, $m[0], $ms[0][$i][1], $ms[0][$i][0], $ms[2][$i][0], $aindex++);
             }
-            // handle href='foo"bar' - and no, I can't match ["'] on both ends
-            if (preg_match('#href\s*=\s*\'\s*(.*)\s*\'#U', $link, $m)){
-                $href = html_entity_decode($m[1]);
+        }
+        // now sort task list by descending location offset
+        // by the way: I want widespread 5.3 adoption for anonymous functions
+        usort($work, create_function('$a,$b', 'if ($a[2] == $b[2]) return 0; return ($a[2] < $b[2]) ? 1 : -1;'));
+        $ex = new sacy_FileExtractor();
+        $files = array();
+        $patched_content = $content;
+        foreach($work as $unit){
+            $r = $ex->extractFile($unit[0], $unit[1], $unit[4]);
+            if ($r === false) continue; // handler has declined
+            $r[] = $unit[5]; //append appearance order index
+
+            // remove tag
+            $patched_content = substr_replace($patched_content, '', $unit[2], strlen($unit[3]));
+            $files[$unit[0]][] = $r;
+        }
+
+        $renderer = new sacy_CacheRenderer($smarty);
+
+        // now put the files back in order of appearance in the original template
+        foreach($files as $tag => &$f){
+            usort($f, create_function('$a,$b', 'if ($a[2] == $b[2]) return 0; return ($a[2] > $b[2]) ? 1 : -1;'));
+            $render = array();
+            $curr_cat = $f[0][0];
+            foreach($f as $fileentry){
+                // the moment the category changes, render all we have so far
+                // this makes it IMPERATIVE to keep links of the same category
+                // together.
+                if ($curr_cat != $fileentry[0]){
+                    $res = $renderer->renderFiles($tag, $curr_cat, $render);
+                    if ($res === false){
+                        // rendering failed.
+                        // because we don't know which one, we just enter emergency mode
+                        // and return the initial content unharmed:
+                        return $content;
+                    }
+                    // add redered stuff to patched content
+                    $patched_content .= $res;
+                    $curr_cat = $fileentry[0];
+                    $render = array($fileentry[1]);
+                }else{
+                    $render[] = $fileentry[1];
+                }
             }
-            // probably something else
-            if (!$href) continue;
-
-            $path = array($_SERVER['DOCUMENT_ROOT']);
-            if ($href[0] != '/')
-                $path[] = $_SERVER['PHP_SELF'];
-            $path[] = $href;
-            $path = realpath(implode(DIRECTORY_SEPARATOR, $path));
-            if ($path)
-                $cssfiles[] = $path;
+            $res = $renderer->renderFiles($tag, $curr_cat, $render);
+            if ($res === false){
+                // see last comment
+                return $content;
+            }
+            $patched_content .= $res;
         }
-        if (count($cssfiles) > 0){
-            $href = asset_compile_generate_cache($smarty, $cssfiles);
-        }
-        if ($href !== false){
-            $content = trim(preg_replace($link_tag_pattern, '', $content));
-            $content .= sprintf('<link rel="stylesheet" type="text/css" href="%s">',
-                htmlentities($href, ENT_QUOTES));
-        }
-        return $content;
+
+        return $patched_content;
     }
-}
-
-function asset_compile_generate_cache(&$smarty, $cssfiles){
-    if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
-        mkdir(ASSET_COMPILE_OUTPUT_DIR);
-
-    $f = create_function('$f', 'return basename($f, ".css");');
-    $ident = implode('-', array_map($f, $cssfiles));
-    $max = 0;
-    foreach($cssfiles as $f){
-        $max = max($max, filemtime($f));
-    }
-    // not using the actual content for quicker access
-    $key = md5($max . serialize($cssfiles));
-    $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key.css";
-    $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key.css";
-
-    if (file_exists($cfile) && (!defined('DEBUG') || !DEBUG)){
-        return $pub;
-    }
-
-    if (!asset_compile_write_cache($smarty, $cfile, $cssfiles)){
-        return false;
-    }
-
-    return $pub;
-}
-
-function asset_compile_write_cache(&$smarty, $cfile, $files){
-    $lockfile = $cfile.".lock";
-    $fhl = @fopen($lockfile, 'w');
-    if (!$fhl){
-        $smarty->trigger_error("Cannot create cache-lockfile: $lockfile");
-        return false;
-    }
-    $wb = false;
-    if (!@flock($fhl, LOCK_EX | LOCK_NB, $wb)){
-        $smarty->trigger_error("Canot lock cache-lockfile: $lockfile");
-        return false;
-    }
-    if ($wb){
-        // another process is writing the cache. Let's just return false
-        // the caller will leave the CSS unaltered
-        return false;
-    }
-    $fhc = @fopen($cfile, 'w');
-    if (!$fhc){
-        $smarty->trigger_error("Cannot open cache file: $cfile");
-        fclose($fhl);
-        unlink($lockfile);
-        return false;
-    }
-    fwrite($fhc, "/* smarty_asset_compile css cache dump \n");
-    fwrite($fhc, "This dump has been created from the following files:\n");
-    foreach($files as $file){
-        fprintf($fhc, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file));
-    }
-    fwrite($fhc, "*/\n\n");
-    foreach($files as $file){
-        fprintf($fhc, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file));
-        $css = @file_get_contents($file);
-        if ($css == false){
-            fwrite($fhc, "/* <Error accessing file> */\n");
-            $smarty->trigger_error("Error accessing CSS-File: $file");
-            continue;
-        }
-        $css = asset_compile_rewrite_cssurl($css, $file);
-        $css = str_replace("\r\n", "\n", $css);
-        $css = str_replace("\r", "\n", $css);
-        $css = str_replace("\n", " ", $css);
-        $css = preg_replace('#\s+#', ' ', $css);
-        fwrite($fhc, $css);
-    }
-    fclose($fhc);
-    fclose($fhl);
-    unlink($lockfile);
-    return true;
-}
-
-function asset_compile_rewrite_cssurl($css, $src){
-    // I have to check this pattern by pattern, because quoted urls could
-    // contain the other character in them, thus breaking the rewrite if
-    // I'd stop at the first matching character.
-    //
-    // Also storing the quote character to quote the url with after the
-    // replacement.
-    $patterns = array( array('#url\s*\(\s*((?:\.\./)+)(.*?)\s*\)#i', '"'),
-                       array('#url\s*\(\s*\'((?:\.\./)+)(.*?)\'\s*\)#i', "'"),
-                       array('#url\s*\(\s*\"((?:\.\./)+)(.*?)\"\s*\)#i', '"')
-                     );
-
-    foreach($patterns as $pattern){
-        list($urlpattern, $q) = $pattern;
-
-        if (!(preg_match($urlpattern, $css, $m)))
-            continue;
-
-        $pc = substr_count($m[1], '..');
-
-        $pubpath = explode('/', dirname(substr($src, strlen($_SERVER['DOCUMENT_ROOT']))));
-        array_splice($pubpath, count($pubpath)-$pc);
-        $d = implode('/', $pubpath)."/";
-
-        $css = preg_replace($urlpattern,
-                   "url($q$d\\2$q)", $css);
-    }
-    return $css;
-
-
 }
 
 ?>
