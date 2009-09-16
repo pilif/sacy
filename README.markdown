@@ -51,7 +51,7 @@ If so, place the sacy plugin file in your Smarty plugin folder and change your H
         </body>
     </html>
 
-At request time, sacy will parse the content of the block, extract the CSS (JavaScript is planned) links, check wehtether it has already cached the compiled version. If not, it'll create one directly on the file system.
+At request time, sacy will parse the content of the block, extract the CSS (JavaScript is planned) links, check whether it has already cached the compiled version. If not, it'll create one directly on the file system.
 
 At any rate, it'll remove the old `<link>`-tags and add a new one, so that your HTML will look like this:
 
@@ -64,6 +64,54 @@ At any rate, it'll remove the old `<link>`-tags and add a new one, so that your 
         content
         </body>
     </html>
+
+sacy now takes into account the media attribute and only groups links together if they share the same media attribute. The reason for this is that you probably do not want your print-style intermixed with your screen style.
+
+This also means though, that to achieve the optimum performance, you should group links with the same media attribute together:
+
+    {asset_compile}
+        <link type="text/css" media="screen" rel="stylesheet" href="/styles/file1.css" />
+        <link type="text/css" media="print" rel="stylesheet" href="/styles/file2.css" />
+        <link type="text/css" media="screen" rel="stylesheet" href="/styles/file3.css" />
+        <link type="text/css" media="screen" rel="stylesheet" href="/styles/file4.css" />
+    {/asset_compile}
+
+will produce
+
+    <link type="text/css" media="screen" rel="stylesheet" href="/csscache/file1-hash.css" />
+    <link type="text/css" media="print" rel="stylesheet" href="/csscache/file2-hash.css" />
+    <link type="text/css" media="screen" rel="stylesheet" href="/csscache/file2-file3-hash.css" />
+
+whereas a bit of reordering to
+
+    {asset_compile}
+        <link type="text/css" media="screen" rel="stylesheet" href="/styles/file1.css" />
+        <link type="text/css" media="screen" rel="stylesheet" href="/styles/file3.css" />
+        <link type="text/css" media="screen" rel="stylesheet" href="/styles/file4.css" />
+        <link type="text/css" media="print" rel="stylesheet" href="/styles/file2.css" />
+    {/asset_compile}
+
+will cause only two links to be created:
+
+    <link type="text/css" media="screen" rel="stylesheet" href="/csscache/file1-file3-file4-hash.css" />
+    <link type="text/css" media="print" rel="stylesheet" href="/csscache/file2-hash.css" />
+
+Web server configuration hints
+------------------------------
+
+Because the name of the generated file changes the moment you change any of the dependent files, this also means that a web browser or even a proxy server will never have to re-request a file once it has been downloaded.
+
+To make this perfectly clear to both browsers and proxy-servers, set these the Expires-header far into the future and set Cache-Control to public so proxies will cache the file too. This will greatly decrease the load on your server and the bandwidth consumed.
+
+To do this in Apache, I have used these directives:
+
+    <Location /assetcache>
+          ExpiresActive On
+          ExpiresDefault "access plus 1 year"
+          Header merge Cache-Control public
+    </Location>
+
+I'm sure other browsers will provide similar methods.
 
 Advantages
 ----------
@@ -82,11 +130,12 @@ There are other solutions for this around, but sacy has a few really unique feat
 * **Fallback**: If at any time there is an issue in generating the cached copy, sacy will not alter the existing link tags. Sure: More requests will be sent to the server, but nothing will break.
 * **Concurrency**: If two requests come in at the same time and the cache-file does not exist, sacy will neither create a corrupted cache file, *nor will it block* any request. Any request being processed while the cache is being written will have the individual links in the code. Any subsequent request will link to the compiled file.
 * **Being Helpful**: The unique name of the cache file contains the base names of the CSS files used to create the compilation which helps you to debug this quickly. If you look inside the file, you'll find a list of the full path names (minus the `DOCUMENT_ROOT` as to not expose private data)
+* **url()-rewriting**: If you are using relative urls in your css files, they would break if they are used in css-files in hierarchies deeper than what sacy exposes. This would cause background images not to load and lots of other funny mistakes. Thus, sacy looks at the CSS files and tries to rewrite all url()'s it finds using information from `ASSET_COMPILE_URL_ROOT` to point to the correct files again.
 
 Installation
 ------------
 
-1. Place `block.asset_compile.php` in your smarty plugin directory
+1. Place `block.asset_compile.php` and `sacy/sacy.php` in your smarty plugin directory
 2. Edit the two constants at the top. The `OUTPUT_DIR` is where you want the files written to, `URL_ROOT` is how that directoy is accessible from the outside.
 3. there is no step 3
 
@@ -96,8 +145,7 @@ Known Issues
 ------------
 
 * At the time of this writing, only CSS `<link>`-tags are supported.
-* There is no support for the media attribute. All CSS files will be placed together regardless of media type.
-* sacy does not contain a CSS parser and changes the path of the CSS that's served, so *relative imports using @import will not work*
+* sacy does not contain a CSS parser. It does rewrite any relative url() it finds inside the CSS-file to absolute ones though, but it does not follow @import directives. This means that while @import will not break, you will lose the compilation feature as `@import`ed files get loaded the traditional way
 
 I'm actively working on issues one and two - the last one is trickier and I'm not sure whether to really actually do it, especially as absolute @import's will work, albeit using the single file, not the compiled file.
 
@@ -106,7 +154,7 @@ Acknowledgements
 
 This is based around the blog entry [How we hash our Javascript for better caching and less breakage on updates](http://blog.greenfelt.net/2009/09/01/caching-javascript-safely/) with some added simplifications and adapted for use with Smarty.
 
-Thanks for that blog entry and the [accompanying discussions](http://news.ycombinator.com/item?id=799994) on Hacker News. 
+Thanks for that blog entry and the [accompanying discussions](http://news.ycombinator.com/item?id=799994) on Hacker News.
 
 Licence
 -------
