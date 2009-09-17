@@ -21,6 +21,22 @@ class sacy_FileExtractor{
         return $this->$fn($attrdata, $content);
     }
 
+    private function urlToFile($ref){
+        $u = parse_url($ref);
+        if ($u === false) return false;
+        if (isset($u['host']) || isset($u['scheme']))
+            return false;
+
+        // TODO: ignore if query string is set, depending on configuration
+        $ref = $u['path'];
+        $path = array($_SERVER['DOCUMENT_ROOT']);
+        if ($ref[0] != '/')
+            $path[] = $_SERVER['PHP_SELF'];
+        $path[] = $ref;
+        return realpath(implode(DIRECTORY_SEPARATOR, $path));
+
+    }
+
 
     private function extract_css_file($attrdata, $content){
         // if any of these conditions are met, this handler will decline
@@ -35,12 +51,9 @@ class sacy_FileExtractor{
             if (!isset($attrs['media']))
                 $attrs['media'] = "";
 
-            $href = $attrs['href'];
-            $path = array($_SERVER['DOCUMENT_ROOT']);
-            if ($href[0] != '/')
-                $path[] = $_SERVER['PHP_SELF'];
-            $path[] = $href;
-            $path = realpath(implode(DIRECTORY_SEPARATOR, $path));
+            $path = $this->urlToFile($attrs['href']);
+            if ($path === false) return false;
+
             return array($attrs['media'], $path);
         }
         return false;
