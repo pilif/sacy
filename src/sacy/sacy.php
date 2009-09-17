@@ -84,7 +84,7 @@ class sacy_FileExtractor{
 class sacy_CacheRenderer {
     private $_smarty;
 
-    function __create($smarty){
+    function __construct($smarty){
         $this->_smarty = $smarty;
     }
 
