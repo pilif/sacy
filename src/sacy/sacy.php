@@ -131,7 +131,7 @@ class sacy_CssRenderHandler implements sacy_CacheRenderHandler{
         $css = @file_get_contents($filename); //maybe stream this later to save memory?
         if ($css == false){
             fwrite($fhc, "/* <Error accessing file> */\n");
-            $this->_smarty->trigger_error("Error accessing CSS-File: $file");
+            $this->_smarty->trigger_error("Error accessing CSS-File: $filename");
             return;
         }
         $css = $this->rewrite_cssurl($css, $filename);
