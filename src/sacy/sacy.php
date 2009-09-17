@@ -241,6 +241,8 @@ function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
 
     $f = create_function('$f', 'return basename($f, "'.$rh->getFileExtension().'");');
     $ident = implode('-', array_map($f, $files));
+    if (strlen($ident) > 120)
+        $ident = 'many-files-'.md5($ident);
     $max = 0;
     foreach($files as $f){
         $max = max($max, filemtime($f));
