@@ -15,6 +15,8 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         //
         // So, let's go back to good old regexps :-)
 
+        sacy_Config::setParams($params);
+
         $tags = array('link', 'script');
         $tag_pattern = '#<\s*T\s+(.*)\s*(?:/>|>(.*)</T>)#Ui';
         $work = array();

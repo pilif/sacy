@@ -30,7 +30,9 @@ class sacy_FileExtractor{
         if (isset($u['host']) || isset($u['scheme']))
             return false;
 
-        // TODO: ignore if query string is set, depending on configuration
+        if (sacy_Config::getInst()->get('query_strings') == 'ignore')
+            if (isset($u['query'])) return false;
+
         $ref = $u['path'];
         $path = array($_SERVER['DOCUMENT_ROOT']);
         if ($ref[0] != '/')
@@ -77,6 +79,48 @@ class sacy_FileExtractor{
             return array('', $path);
         }
         return false;
+    }
+
+}
+
+class sacy_Config{
+    private static $inst = null;
+
+    private $params;
+
+    public function get($key){
+        return $this->params[$key];
+    }
+
+    static function getInst(){
+        if (!self::$inst) self::$inst = new sacy_Config();
+        return self::$inst;
+    }
+
+    static function setParams($params){
+        if (!self::$inst) self::$inst = new sacy_Config();
+        self::$inst->_setParams($params);
+    }
+
+    private function __construct($params = null){
+        $this->params['query_strings'] = 'ignore';
+        $this->params['write_headers'] = true;
+        if (is_array($params))
+            $this->_setParams($params);
+    }
+
+    private function _setParams($params){
+        foreach($params as $key => $value){
+            if (!in_array($key, array('query_strings', 'write_headers')))
+                throw new sacy_Exception("Invalid option: $key");
+        }
+        if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
+            throw new sacy_Exception("Invalid setting for query_strings: ".$params['query_strings']);
+        if (isset($params['write_headers']) && !in_array($params['write_headers'], array(true, false), true))
+            throw new sacy_Exception("Invalid setting for write_headers: ".$params['write_headers']);
+
+
+        $this->params = array_merge($this->params, $params);
     }
 
 }
@@ -145,7 +189,8 @@ class sacy_JavaScriptRenderHandler implements sacy_CacheRenderHandler{
     }
 
     function processFile($fh, $filename){
-        fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
+        if (sacy_Config::getInst()->get('write_headers'))
+            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
         $js = @file_get_contents($filename);
         if ($js == false){
             fwrite($fhc, "/* <Error accessing file> */\n");
@@ -175,7 +220,8 @@ class sacy_CssRenderHandler implements sacy_CacheRenderHandler{
     }
 
     function processFile($fh, $filename){
-        fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
+        if (sacy_Config::getInst()->get('write_headers'))
+           fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
         $css = @file_get_contents($filename); //maybe stream this later to save memory?
         if ($css == false){
             fwrite($fh, "/* <Error accessing file> */\n");
@@ -287,8 +333,8 @@ function sacy_write_cache(&$smarty, $cfile, $files, sacy_CacheRenderHandler $rh)
         unlink($lockfile);
         return false;
     }
-
-    $rh->writeHeader($fhc, $files);
+    if (sacy_Config::getInst()->get('write_headers'))
+        $rh->writeHeader($fhc, $files);
 
     foreach($files as $file){
         $rh->processFile($fhc, $file);
