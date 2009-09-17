@@ -12,7 +12,7 @@ Various approaches have been used for this so far, the most common ones are thes
 
 Both solutions also require you to keep them in mind during development: The first one requires you to check for the existence of the compiled file and serve that or the individual files while the second one forces you to do some kind of registry to notify the central asset serving script about the whereabouts of the file.
 
-Smarty Asset Compiler (sacy) is (as the name suggests) a Plugin for the widely used PHP templating engine [Smarty](http://www.smarty.net) that provides a fresh approach that solves (nearly) all problems with the traditional solutions.
+Smarty Asset Compiler (*sacy*) is (as the name suggests) a Plugin for the widely used PHP templating engine [Smarty](http://www.smarty.net) that provides a fresh approach that solves (nearly) all problems with the traditional solutions.
 
 Usage
 -----
@@ -26,6 +26,9 @@ Let's assume that you have an HTML header that looks like this:
           <link type="text/css" rel="stylesheet" href="/styles/file2.css" />
           <link type="text/css" rel="stylesheet" href="/styles/file3.css" />
           <link type="text/css" rel="stylesheet" href="/styles/file4.css" />
+          <script type="text/javascript" src="/jslib/file1.js"></script>
+          <script type="text/javascript" src="/jslib/file2.js"></script>
+          <script type="text/javascript" src="/jslib/file3.js"></script>
         </head>
         <body>
         content
@@ -44,6 +47,9 @@ If so, place the sacy plugin file in your Smarty plugin folder and change your H
               <link type="text/css" rel="stylesheet" href="/styles/file2.css" />
               <link type="text/css" rel="stylesheet" href="/styles/file3.css" />
               <link type="text/css" rel="stylesheet" href="/styles/file4.css" />
+              <script type="text/javascript" src="/jslib/file1.js"></script>
+              <script type="text/javascript" src="/jslib/file2.js"></script>
+              <script type="text/javascript" src="/jslib/file3.js"></script>
           {/asset_compile}
         </head>
         <body>
@@ -51,21 +57,22 @@ If so, place the sacy plugin file in your Smarty plugin folder and change your H
         </body>
     </html>
 
-At request time, sacy will parse the content of the block, extract the CSS (JavaScript is planned) links, check whether it has already cached the compiled version. If not, it'll create one directly on the file system.
+At request time, sacy will parse the content of the block, extract the CSS links and script tags sourcing files from the same server, check whether it has already cached the compiled version. If not, it'll create one directly on the file system. Note that this process can take a long time for JavaScript files as all sourced files are Minified before being stored.
 
-At any rate, it'll remove the old `<link>`-tags and add a new one, so that your HTML will look like this:
+At any rate, it'll remove the old `<link>`- and `<script>`-tags and add new ones, so that your HTML will look like this:
 
     <html>
         <head>
           <title>Title</title>
-          <link type="text/css" rel="stylesheet" href="/csscache/file1-file2-file3-file4-abc1234def12345.css" />
+          <link type="text/css" rel="stylesheet" href="/assetcache/file1-file2-file3-file4-abc1234def12345.css" />
+          <script type="text/javascript" src="/assetcache/file1-file2-file3-deadbeef1234.js"></script>
         </head>
         <body>
         content
         </body>
     </html>
 
-sacy now takes into account the media attribute and only groups links together if they share the same media attribute. The reason for this is that you probably do not want your print-style intermixed with your screen style.
+sacy now takes into account the media attribute for CSS files and only groups links together if they share the same media attribute. The reason for this is that you probably do not want your print-style intermixed with your screen style.
 
 This also means though, that to achieve the optimum performance, you should group links with the same media attribute together:
 
@@ -95,7 +102,37 @@ will cause only two links to be created:
 
     <link type="text/css" media="screen" rel="stylesheet" href="/csscache/file1-file3-file4-hash.css" />
     <link type="text/css" media="print" rel="stylesheet" href="/csscache/file2-hash.css" />
+    
+sacy will ignore all referenced resources if the given URL-string contains a scheme and/or a host name. While PHP's built-in support for networking protocols would allow for the handling of remote files, in most of the cases this is **not** what the user expects (think "ad-tracking code"). If you need this feature, you will have to patch sacy accordingly, but keep in mind that checking the last-modified-date of remote resources is very costly and possibly inaccurate.
 
+Also, remote resources can change at will, which would cause the whole cache file to be regenerated way too often.
+
+Block parameters
+--------------
+´{asset_tag}´ supports two parameters:
+
+- `query_strings = ("ignore"|"force-handle")`
+
+  Specifies how sacy should handle relations that contain query-strings
+  in their location:
+
+  "ignore" will decline handling tags whose locations contain query strings
+  
+  "force-handle" will handle them.
+
+  "ignore" is the default.
+
+- `write_headers = (true|false)`
+
+ Specifies whether sacy should write a header enumerating the source files
+ into the compiled files (it will never expose the DOCUMENT_ROOT though).
+
+ This can be helpful for debugging purposes, but one might want to turn
+ it off for file size reasons (ridiculous considering the size of the headers)
+ or to not expose information.
+
+ true is the default, so headers are written
+    
 Web server configuration hints
 ------------------------------
 
@@ -144,10 +181,9 @@ I recommend setting `OUTPUT_DIR` to some place that's not publicly accessible an
 Known Issues
 ------------
 
-* At the time of this writing, only CSS `<link>`-tags are supported.
+* sacy doesn't handle HTML comments (bug #4), so even if a tag is inside HTML comments, it will still be rendered. Use Smarty comments for now. This also means that sacy will fail in cases where IE's conditional comments are used to fetch additional files. For now, put these conditional comments outside of a `{asset_compile}` tag
 * sacy does not contain a CSS parser. It does rewrite any relative url() it finds inside the CSS-file to absolute ones though, but it does not follow @import directives. This means that while @import will not break, you will lose the compilation feature as `@import`ed files get loaded the traditional way
 
-I'm actively working on issues one and two - the last one is trickier and I'm not sure whether to really actually do it, especially as absolute @import's will work, albeit using the single file, not the compiled file.
 
 Acknowledgements
 ----------------
