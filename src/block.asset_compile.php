@@ -49,6 +49,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         }
 
         $renderer = new sacy_CacheRenderer($smarty);
+        $rendered_content = "";
 
         // now put the files back in order of appearance in the original template
         foreach($files as $tag => &$f){
@@ -68,7 +69,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
                         return $content;
                     }
                     // add redered stuff to patched content
-                    $patched_content .= $res;
+                    $rendered_content .= $res;
                     $curr_cat = $fileentry[0];
                     $render = array($fileentry[1]);
                 }else{
@@ -80,10 +81,10 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
                 // see last comment
                 return $content;
             }
-            $patched_content .= $res;
+            $rendered_content .= $res;
         }
 
-        return $patched_content;
+        return $rendered_content.$patched_content;
     }
 }
 
