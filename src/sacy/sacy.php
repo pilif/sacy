@@ -1,5 +1,8 @@
 <?php
 
+if (!class_exists('JSMin'))
+    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'jsmin.php')));
+
 /*
  *   An earlier experiment contained a real framework for tag
  *   and parser registration. In the end, this turned out
@@ -60,7 +63,20 @@ class sacy_FileExtractor{
     }
 
     private function extract_js_file($attrdata, $content){
-        throw new sacy_Exception("scripts not implemented yet");
+        // don't handle non-empty tags
+        if (preg_match('#\S+#', $content)) return false;
+
+        $attrs = sacy_extract_attrs($attrdata);
+
+        if ( ($attrs['type'] == 'text/javascript' ||
+                $attrs['type'] == 'application/javascript') &&
+             (isset($attrs['src']) && !empty($attrs['src'])) ){
+
+            $path = $this->urlToFile($attrs['src']);
+            if ($path === false) return false;
+            return array('', $path);
+        }
+        return false;
     }
 
 }
@@ -97,7 +113,9 @@ class sacy_CacheRenderer {
     }
 
     private function render_js_files($files, $cat){
-        throw new sacy_Exception("scripts not implemented yet");
+        $ref = sacy_generate_cache($this->_smarty, $files, new sacy_JavascriptRenderHandler($this->_smarty));
+        if (!$ref) return false;
+        return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($ref, ENT_QUOTES));
     }
 }
 
@@ -106,6 +124,36 @@ interface sacy_CacheRenderHandler{
     function getFileExtension();
     function writeHeader($fh, $files);
     function processFile($fh, $filename);
+}
+
+class sacy_JavaScriptRenderHandler implements sacy_CacheRenderHandler{
+    private $_smarty;
+
+    function __construct($smarty){
+        $this->_smarty = $smarty;
+    }
+
+    function getFileExtension() { return '.js'; }
+
+    function writeHeader($fh, $files){
+        fwrite($fh, "/*\nsacy javascript cache dump \n\n");
+        fwrite($fh, "This dump has been created from the following files:\n");
+        foreach($files as $file){
+            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file));
+        }
+        fwrite($fh, "*/\n\n");
+    }
+
+    function processFile($fh, $filename){
+        fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
+        $js = @file_get_contents($filename);
+        if ($js == false){
+            fwrite($fhc, "/* <Error accessing file> */\n");
+            $this->_smarty->trigger_error("Error accessing JavaScript-File: $filename");
+            return;
+        }
+        fwrite($fh, JSMin::minify($js));
+    }
 }
 
 class sacy_CssRenderHandler implements sacy_CacheRenderHandler{
