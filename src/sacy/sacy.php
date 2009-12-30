@@ -12,6 +12,11 @@ if (!class_exists('Minify_CSS'))
  *   for two types of resources.
  */
 class sacy_FileExtractor{
+    private $_cfg;
+
+    function __construct(sacy_Config $config){
+        $this->_cfg = $config;
+    }
 
     function extractFile($tag, $attrdata, $content){
         switch($tag){
@@ -32,7 +37,7 @@ class sacy_FileExtractor{
         if (isset($u['host']) || isset($u['scheme']))
             return false;
 
-        if (sacy_Config::getInst()->get('query_strings') == 'ignore')
+        if ($this->_cfg->get('query_strings') == 'ignore')
             if (isset($u['query'])) return false;
 
         $ref = $u['path'];
@@ -86,32 +91,20 @@ class sacy_FileExtractor{
 }
 
 class sacy_Config{
-    private static $inst = null;
-
     private $params;
 
     public function get($key){
         return $this->params[$key];
     }
 
-    static function getInst(){
-        if (!self::$inst) self::$inst = new sacy_Config();
-        return self::$inst;
-    }
-
-    static function setParams($params){
-        if (!self::$inst) self::$inst = new sacy_Config();
-        self::$inst->_setParams($params);
-    }
-
-    private function __construct($params = null){
+    public function __construct($params = null){
         $this->params['query_strings'] = 'ignore';
         $this->params['write_headers'] = true;
         if (is_array($params))
-            $this->_setParams($params);
+            $this->setParams($params);
     }
 
-    private function _setParams($params){
+    public function setParams($params){
         foreach($params as $key => $value){
             if (!in_array($key, array('query_strings', 'write_headers')))
                 throw new sacy_Exception("Invalid option: $key");
@@ -129,9 +122,11 @@ class sacy_Config{
 
 class sacy_CacheRenderer {
     private $_smarty;
+    private $_cfg;
 
-    function __construct($smarty){
+    function __construct(sacy_Config $config, $smarty){
         $this->_smarty = $smarty;
+        $this->_cfg = $config;
     }
 
     function renderFiles($tag, $cat, $files){
@@ -149,7 +144,7 @@ class sacy_CacheRenderer {
 
 
     private function render_css_files($files, $cat){
-        $ref = sacy_generate_cache($this->_smarty, $files, new sacy_CssRenderHandler($this->_smarty));
+        $ref = sacy_generate_cache($this->_smarty, $files, new sacy_CssRenderHandler($this->_cfg, $this->_smarty));
         if (!$ref) return false;
         $cs = $cat ? sprintf(' media="%s"', htmlspecialchars($cat, ENT_QUOTES)) : '';
         return sprintf('<link rel="stylesheet" type="text/css"%s href="%s" />'."\n",
@@ -159,25 +154,40 @@ class sacy_CacheRenderer {
     }
 
     private function render_js_files($files, $cat){
-        $ref = sacy_generate_cache($this->_smarty, $files, new sacy_JavascriptRenderHandler($this->_smarty));
+        $ref = sacy_generate_cache($this->_smarty, $files, new sacy_JavascriptRenderHandler($this->_cfg, $this->_smarty));
         if (!$ref) return false;
         return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($ref, ENT_QUOTES));
     }
 }
 
 interface sacy_CacheRenderHandler{
-    function __construct($smarty);
+    function __construct(sacy_Config $cfg, $smarty);
     function getFileExtension();
     function writeHeader($fh, $files);
     function processFile($fh, $filename);
+    function getConfig();
 }
 
-class sacy_JavaScriptRenderHandler implements sacy_CacheRenderHandler{
+abstract class sacy_ConfiguredRenderHandler implements sacy_CacheRenderHandler{
     private $_smarty;
+    private $_cfg;
 
-    function __construct($smarty){
+    function __construct(sacy_Config $cfg, $smarty){
         $this->_smarty = $smarty;
+        $this->_cfg = $cfg;
     }
+
+    protected function getSmarty(){
+        return $this->_smarty;
+    }
+
+    public function getConfig(){
+        return $this->_cfg;
+    }
+
+}
+
+class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
 
     function getFileExtension() { return '.js'; }
 
@@ -191,25 +201,20 @@ class sacy_JavaScriptRenderHandler implements sacy_CacheRenderHandler{
     }
 
     function processFile($fh, $filename){
-        if (sacy_Config::getInst()->get('write_headers'))
+        if ($this->getConfig()->get('write_headers'))
             fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
         $js = @file_get_contents($filename);
         if ($js == false){
             fwrite($fhc, "/* <Error accessing file> */\n");
-            $this->_smarty->trigger_error("Error accessing JavaScript-File: $filename");
+            $this->getSmarty()->trigger_error("Error accessing JavaScript-File: $filename");
             return;
         }
         fwrite($fh, JSMin::minify($js));
     }
+
 }
 
-class sacy_CssRenderHandler implements sacy_CacheRenderHandler{
-    private $_smarty;
-
-    function __construct($smarty){
-        $this->_smarty = $smarty;
-    }
-
+class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
     function getFileExtension() { return '.css'; }
 
     function writeHeader($fh, $files){
@@ -222,12 +227,12 @@ class sacy_CssRenderHandler implements sacy_CacheRenderHandler{
     }
 
     function processFile($fh, $filename){
-        if (sacy_Config::getInst()->get('write_headers'))
+        if ($this->getConfig()->get('write_headers'))
            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
         $css = @file_get_contents($filename); //maybe stream this later to save memory?
         if ($css == false){
             fwrite($fh, "/* <Error accessing file> */\n");
-            $this->_smarty->trigger_error("Error accessing CSS-File: $filename");
+            $this->getSmarty()->trigger_error("Error accessing CSS-File: $filename");
             return;
         }
         fwrite($fh, Minify_CSS::minify($css, array(
@@ -302,7 +307,7 @@ function sacy_write_cache(&$smarty, $cfile, $files, sacy_CacheRenderHandler $rh)
         unlink($lockfile);
         return false;
     }
-    if (sacy_Config::getInst()->get('write_headers'))
+    if ($rh->getConfig()->get('write_headers'))
         $rh->writeHeader($fhc, $files);
 
     foreach($files as $file){

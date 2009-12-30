@@ -15,7 +15,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         //
         // So, let's go back to good old regexps :-)
 
-        sacy_Config::setParams($params);
+        $cfg = new sacy_Config($params);
 
         $tags = array('link', 'script');
         $tag_pattern = '#<\s*T\s+(.*)\s*(?:/>|>(.*)</T>)#Ui';
@@ -37,7 +37,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         // now sort task list by descending location offset
         // by the way: I want widespread 5.3 adoption for anonymous functions
         usort($work, create_function('$a,$b', 'if ($a[2] == $b[2]) return 0; return ($a[2] < $b[2]) ? 1 : -1;'));
-        $ex = new sacy_FileExtractor();
+        $ex = new sacy_FileExtractor($cfg);
         $files = array();
         $patched_content = $content;
         foreach($work as $unit){
@@ -50,7 +50,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             $files[$unit[0]][] = $r;
         }
 
-        $renderer = new sacy_CacheRenderer($smarty);
+        $renderer = new sacy_CacheRenderer($cfg, $smarty);
         $rendered_content = "";
 
         // now put the files back in order of appearance in the original template
