@@ -57,7 +57,7 @@ If so, place the sacy plugin file in your Smarty plugin folder and change your H
         </body>
     </html>
 
-At request time, sacy will parse the content of the block, extract the CSS links and script tags sourcing files from the same server, check whether it has already cached the compiled version. If not, it'll create one directly on the file system. Note that this process can take a long time for JavaScript files as all sourced files are Minified before being stored.
+At request time, sacy will parse the content of the block, extract the CSS links and script tags sourcing files from the same server, check whether it has already cached the compiled version. If not, it'll create one directly on the file system. Note that this process can take a long time as all sourced files are Minified (using jsMin for JavaScript and Minify for CSS) before being stored.
 
 At any rate, it'll remove the old `<link>`- and `<script>`-tags and add new ones, so that your HTML will look like this:
 
@@ -132,7 +132,18 @@ Block parameters
  or to not expose information.
 
  true is the default, so headers are written
+
+- `debug_toggle = (<string>|false)`
     
+ If `$_GET[<debug_toggle>]` or `$_COOKIE[<debug_toggle>]` is set to either 1 or 2, then the following will happen:
+ 
+ "1" will make sacy decline all processing of a blocks content.
+ 
+ "2" will make sacy re-process all files as if the cache was empty.
+
+ debug_toggle is set to `_sacy_debug` per default. If it's set to `false` sacy will never do any debug handling regardless of the request.
+
+
 Web server configuration hints
 ------------------------------
 
@@ -167,12 +178,14 @@ There are other solutions for this around, but sacy has a few really unique feat
 * **Fallback**: If at any time there is an issue in generating the cached copy, sacy will not alter the existing link tags. Sure: More requests will be sent to the server, but nothing will break.
 * **Concurrency**: If two requests come in at the same time and the cache-file does not exist, sacy will neither create a corrupted cache file, *nor will it block* any request. Any request being processed while the cache is being written will have the individual links in the code. Any subsequent request will link to the compiled file.
 * **Being Helpful**: The unique name of the cache file contains the base names of the CSS files used to create the compilation which helps you to debug this quickly. If you look inside the file, you'll find a list of the full path names (minus the `DOCUMENT_ROOT` as to not expose private data)
-* **url()-rewriting**: If you are using relative urls in your css files, they would break if they are used in css-files in hierarchies deeper than what sacy exposes. This would cause background images not to load and lots of other funny mistakes. Thus, sacy looks at the CSS files and tries to rewrite all url()'s it finds using information from `ASSET_COMPILE_URL_ROOT` to point to the correct files again.
+* **url()-rewriting**: If you are using relative urls in your css files, they would break if they are used in css-files in hierarchies deeper than what sacy exposes. This would cause background images not to load and lots of other funny mistakes. Thus, sacy looks at the CSS files and tries to rewrite all url()'s it finds using information from `ASSET_COMPILE_URL_ROOT` to point to the correct files again. This is now done by Minify which is included in the package.
 
 Installation
 ------------
 
-1. Place `block.asset_compile.php` and `sacy/sacy.php` in your smarty plugin directory
+1. Place `block.asset_compile.php` and the directory `sacy/` in your smarty plugin directory. Note that sacy comes with Minify and jsMin to handle CSS and JS minifycation respectively. If you already have these packages loaded, sacy will use those versions instead of its own internal copy. 
+
+   Conversely, this means that if you do not want to bloat your Smarty plugin directory, just load the classes somewhere before you call {asset_compile} for the first time and you can get away with only installing `sacy/sacy.php`.
 2. Edit the two constants at the top. The `OUTPUT_DIR` is where you want the files written to, `URL_ROOT` is how that directoy is accessible from the outside.
 3. there is no step 3
 
@@ -191,6 +204,8 @@ Acknowledgements
 This is based around the blog entry [How we hash our Javascript for better caching and less breakage on updates](http://blog.greenfelt.net/2009/09/01/caching-javascript-safely/) with some added simplifications and adapted for use with Smarty.
 
 Thanks for that blog entry and the [accompanying discussions](http://news.ycombinator.com/item?id=799994) on Hacker News.
+
+Thanks to http://github.com/rgrove/jsmin-php/ and http://code.google.com/p/minify/ for their implementations of JS and CSS minification respectively. Sacy uses a built-in copy of these if they are not already loaded when sacy is run the first time.
 
 Licence
 -------
