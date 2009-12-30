@@ -100,13 +100,23 @@ class sacy_Config{
     public function __construct($params = null){
         $this->params['query_strings'] = 'ignore';
         $this->params['write_headers'] = true;
+        $this->params['debug_toggle']  = '_sacy_debug';
         if (is_array($params))
             $this->setParams($params);
     }
 
+    public function getDebugMode(){
+        if (isset($_GET[$this->params['debug_toggle']]))
+            return intval($_GET[$this->params['debug_toggle']]);
+        if (isset($_COOKIE[$this->params['debug_toggle']]))
+            return intval($_COOKIE[$this->params['debug_toggle']]);
+        return 0;
+
+    }
+
     public function setParams($params){
         foreach($params as $key => $value){
-            if (!in_array($key, array('query_strings', 'write_headers')))
+            if (!in_array($key, array('query_strings', 'write_headers', 'debug_toggle')))
                 throw new sacy_Exception("Invalid option: $key");
         }
         if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
@@ -272,7 +282,7 @@ function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
     $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
     $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
 
-    if (file_exists($cfile) && (!defined('DEBUG') || !DEBUG)){
+    if (file_exists($cfile) && ($rh->getConfig()->getDebugMode() != 2)){
         return $pub;
     }
 
