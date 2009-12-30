@@ -106,6 +106,8 @@ class sacy_Config{
     }
 
     public function getDebugMode(){
+        if ($this->params['debug_toggle'] === false)
+            return 0;
         if (isset($_GET[$this->params['debug_toggle']]))
             return intval($_GET[$this->params['debug_toggle']]);
         if (isset($_COOKIE[$this->params['debug_toggle']]))
