@@ -2,6 +2,8 @@
 
 if (!class_exists('JSMin'))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'jsmin.php')));
+if (!class_exists('Minify_CSS'))
+    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'cssmin.php')));
 
 /*
  *   An earlier experiment contained a real framework for tag
@@ -228,43 +230,10 @@ class sacy_CssRenderHandler implements sacy_CacheRenderHandler{
             $this->_smarty->trigger_error("Error accessing CSS-File: $filename");
             return;
         }
-        $css = $this->rewrite_cssurl($css, $filename);
-        $css = str_replace("\r\n", "\n", $css);
-        $css = str_replace("\r", "\n", $css);
-        $css = str_replace("\n", " ", $css);
-        $css = preg_replace('#\s+#', ' ', $css);
-        fwrite($fh, $css);
+        fwrite($fh, Minify_CSS::minify($css, array(
+            'currentDir' => dirname($filename)
+        )));
     }
-
-    private function rewrite_cssurl($css, $src){
-        // I have to check this pattern by pattern, because quoted urls could
-        // contain the other character in them, thus breaking the rewrite if
-        // I'd stop at the first matching character.
-        //
-        // Also storing the quote character to quote the url with after the
-        // replacement.
-        $patterns = array( array('#url\s*\(\s*((?:\.\./)+)(.*?)\s*\)#i', '"'),
-                           array('#url\s*\(\s*\'((?:\.\./)+)(.*?)\'\s*\)#i', "'"),
-                           array('#url\s*\(\s*\"((?:\.\./)+)(.*?)\"\s*\)#i', '"')
-                         );
-
-        foreach($patterns as $pattern){
-            list($urlpattern, $q) = $pattern;
-
-            if (!(preg_match($urlpattern, $css, $m)))
-                continue;
-
-            $pc = substr_count($m[1], '..');
-
-            $pubpath = explode('/', dirname(substr($src, strlen($_SERVER['DOCUMENT_ROOT']))));
-            array_splice($pubpath, count($pubpath)-$pc);
-            $d = implode('/', $pubpath)."/";
-
-            $css = preg_replace($urlpattern, "url($q$d\\2$q)", $css);
-        }
-        return $css;
-    }
-
 }
 
 class sacy_Exception extends Exception {}
