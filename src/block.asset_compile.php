@@ -1,7 +1,6 @@
 <?php
 
-if (!defined('____SACY_IS_BUNDLED'))
-    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
+include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
 
 function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
     if (!$repeat){
@@ -89,5 +88,3 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         return $rendered_content.$patched_content;
     }
 }
-
-?>

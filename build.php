@@ -25,39 +25,50 @@ if ($args['h'] || !$_SERVER['argv'][1] || !is_readable($_SERVER['argv'][1])){
 $skipfiles = array();
 if (!isset($args['c'])) $skipfiles['cssmin.php'] = true;
 if (!isset($args['j'])) $skipfiles['jsmin.php'] = true;
+$skipfiles['block.asset_compile.php'] = true; // this will be used as phar stub
 
 $srcdir = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'src'));
-$fh = fopen(implode(DIRECTORY_SEPARATOR, array(__DIR__, 'build', 'block_asset_compile.php')), 'w');
+$outfile = 'block_asset_compile.php';
+$target = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'build', 'temp.phar'));
+$arch = new Phar($target, 0, 'block_asset_compile.php');
+#$arch->compressFiles(Phar::GZ);
+$arch->startBuffering();
+$arch->buildFromIterator(new SacySupportFilesFilter(
+            new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcdir), RecursiveIteratorIterator::SELF_FIRST),
+            $skipfiles
+), $srcdir);
+$arch->stopBuffering();
+$stub ='<?php Phar::interceptFileFuncs();'.
+    de_phptag(file_get_contents($_SERVER['argv'][1])).
+    de_phptag(file_get_contents($srcdir.DIRECTORY_SEPARATOR.'block.asset_compile.php')).
+    "\n__HALT_COMPILER();";
+$arch->setStub($stub);
 
-if (!$fh){
-    fwrite(STDERR, "Unable to write build output file\n");
-    die(2);
-}
-fwrite($fh, '<?php define("____SACY_IS_BUNDLED", 1);');
-fwrite($fh, de_phptag(file_get_contents($_SERVER['argv'][1])));
-
-$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcdir), RecursiveIteratorIterator::SELF_FIRST);
-foreach($it as $entry){
-    if ($entry->isDir())
-        continue;
-    if (!preg_match('#\.(php)$#', $entry->getFilename()))
-        continue;
-    if ($skipfiles[$entry->getFilename()])
-        continue;
-
-    $r = fopen($entry->getPathname(), 'r');
-    if (!$r){
-        fwrite(STDERR, "Unable to read source file ".$entry->getPathname());
-        continue;
-    }
-    while(false !== ($line = fgets($r))){
-        fwrite($fh, de_phptag($line));
-    }
-    fclose($r);
-}
-fclose($fh);
+$arch = null;
+rename($target, dirname($target).DIRECTORY_SEPARATOR.$outfile);
 die(0);
 
 function de_phptag($str){
-    return  preg_replace('#<\?(php)?|\?>#', '', $str);
+    return preg_replace('#<\?(php)?|\?>#', '', $str);
+
+}
+
+class SacySupportFilesFilter extends FilterIterator{
+    private $skipfiles;
+
+    function __construct(Iterator $it, $skipfiles){
+        parent::__construct($it);
+        $this->skipfiles = $skipfiles ?: array();
+    }
+
+    public function accept(){
+        if ($this->current()->isDir())
+            return false;
+        if (!preg_match('#\.(php)$#', $this->current()->getFilename()))
+            return false;;
+        if ($this->skipfiles[$this->current()->getFilename()])
+            return false;
+
+        return true;
+    }
 }
