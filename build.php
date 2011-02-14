@@ -1,11 +1,32 @@
 #!/usr/bin/env php
 <?php
 
-$srcdir = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'src'));
-if (!$_SERVER['argv'][1] || !is_readable($_SERVER['argv'][1])){
-    fwrite(STDERR, "usage: build.php <configfile>\n");
+$args = getopt("cjh");
+$pruneargv = array();
+foreach ($args as $o => $v) {
+  foreach ($_SERVER['argv'] as $key => $chunk) {
+    $regex = '/^'. (isset($o[1]) ? '--' : '-') . $o . '/';
+    if ($chunk == $v && $_SERVER['argv'][$key-1][0] == '-' || preg_match($regex, $chunk)) {
+      array_push($pruneargv, $key);
+    }
+  }
+}
+while ($key = array_pop($pruneargv))
+    unset($_SERVER['argv'][$key]);
+$_SERVER['argv'] = array_values($_SERVER['argv']);
+
+if ($args['h'] || !$_SERVER['argv'][1] || !is_readable($_SERVER['argv'][1])){
+    fwrite(STDERR, "usage: build.php [-c] [-j] <configfile>
+    -c: Include CSSMin into bundle
+    -j: Include JSMin into bundle\n");
     die(1);
 }
+
+$skipfiles = array();
+if (!isset($args['c'])) $skipfiles['cssmin.php'] = true;
+if (!isset($args['j'])) $skipfiles['jsmin.php'] = true;
+
+$srcdir = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'src'));
 $fh = fopen(implode(DIRECTORY_SEPARATOR, array(__DIR__, 'build', 'block_asset_compile.php')), 'w');
 
 if (!$fh){
@@ -21,6 +42,9 @@ foreach($it as $entry){
         continue;
     if (!preg_match('#\.(php)$#', $entry->getFilename()))
         continue;
+    if ($skipfiles[$entry->getFilename()])
+        continue;
+
     $r = fopen($entry->getPathname(), 'r');
     if (!$r){
         fwrite(STDERR, "Unable to read source file ".$entry->getPathname());
