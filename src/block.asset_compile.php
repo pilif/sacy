@@ -1,10 +1,7 @@
 <?php
 
-define("ASSET_COMPILE_OUTPUT_DIR", APP_ROOT.'/pcache/asset_compile');
-define("ASSET_COMPILE_URL_ROOT", '/assetcache');
-//define("DEBUG", true);
-
-include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
+if (!defined('____SACY_IS_BUNDLED'))
+    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
 
 function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
     if (!$repeat){

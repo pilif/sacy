@@ -1,0 +1,4 @@
+<?php
+
+define("ASSET_COMPILE_OUTPUT_DIR", APP_ROOT.'/pcache/asset_compile');
+define("ASSET_COMPILE_URL_ROOT", '/assetcache');
