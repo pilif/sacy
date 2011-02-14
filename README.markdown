@@ -203,6 +203,12 @@ To do this in Apache, I have used these directives:
           Header merge Cache-Control public
     </Location>
 
+If you are using nginx, you can accomplish the same thing using
+
+    location /assetcache {
+        expires max;
+    }
+
 I'm sure other browsers will provide similar methods.
 
 Advantages
