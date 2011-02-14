@@ -1,6 +1,7 @@
 <?php
 
-include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
+if (!defined("____SACY_BUNDLED"))
+    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
 
 function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
     if (!$repeat){

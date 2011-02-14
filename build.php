@@ -28,17 +28,21 @@ if (!isset($args['j'])) $skipfiles['jsmin.php'] = true;
 $skipfiles['block.asset_compile.php'] = true; // this will be used as phar stub
 
 $srcdir = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'src'));
-$outfile = 'block_asset_compile.php';
+$outfile = 'block.asset_compile.php';
 $target = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'build', 'temp.phar'));
-$arch = new Phar($target, 0, 'block_asset_compile.php');
+$arch = new Phar($target, 0, 'block.asset_compile.php');
 #$arch->compressFiles(Phar::GZ);
 $arch->startBuffering();
 $arch->buildFromIterator(new SacySupportFilesFilter(
             new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcdir), RecursiveIteratorIterator::SELF_FIRST),
             $skipfiles
 ), $srcdir);
+
 $arch->stopBuffering();
-$stub ='<?php Phar::interceptFileFuncs();'.
+$stub ='<?php Phar::interceptFileFuncs();
+    define("____SACY_BUNDLED", 1);
+    set_include_path("phar://" . __FILE__ . PATH_SEPARATOR . get_include_path());
+    include("sacy/sacy.php");'.
     de_phptag(file_get_contents($_SERVER['argv'][1])).
     de_phptag(file_get_contents($srcdir.DIRECTORY_SEPARATOR.'block.asset_compile.php')).
     "\n__HALT_COMPILER();";
