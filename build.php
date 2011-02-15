@@ -16,8 +16,8 @@ if ($args){
         unset($_SERVER['argv'][$key]);
     $_SERVER['argv'] = array_values($_SERVER['argv']);
 }
-if (!$args || $args['h'] || !$_SERVER['argv'][1] || !is_readable($_SERVER['argv'][1])){
-    fwrite(STDERR, "usage: build.php [-c] [-j] [--with-PACKAGE=<path>] <configfile>
+if (!$args || $args['h']){
+    fwrite(STDERR, "usage: build.php [-c] [-j] [--with-PACKAGE=<path>]
     -c: Include CSSMin into bundle
     -j: Include JSMin into bundle
 
@@ -67,7 +67,6 @@ $stub ='<?php Phar::interceptFileFuncs();
     define("____SACY_BUNDLED", 1);
     Phar::mapPhar("sacy.phar");
     include("phar://sacy.phar/sacy/sacy.php");'.
-    de_phptag(file_get_contents($_SERVER['argv'][1])).
     de_phptag(file_get_contents($srcdir.DIRECTORY_SEPARATOR.'block.asset_compile.php')).
     "\n__HALT_COMPILER();";
 $arch->setStub($stub);
