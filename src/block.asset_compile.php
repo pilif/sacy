@@ -56,7 +56,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
 
         // now put the files back in order of appearance in the original template
         foreach($files as $tag => &$f){
-            usort($f, create_function('$a,$b', 'if ($a[2] == $b[2]) return 0; return ($a[2] > $b[2]) ? 1 : -1;'));
+            usort($f, create_function('$a,$b', 'if ($a[3] == $b[3]) return 0; return ($a[3] > $b[3]) ? 1 : -1;'));
             $render = array();
             $curr_cat = $f[0][0];
             foreach($f as $fileentry){

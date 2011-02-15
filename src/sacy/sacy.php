@@ -66,7 +66,7 @@ class sacy_FileExtractor{
             $path = $this->urlToFile($attrs['href']);
             if ($path === false) return false;
 
-            return array($attrs['media'], $path);
+            return array($attrs['media'], $path, $attrs['type']);
         }
         return false;
     }
@@ -83,7 +83,7 @@ class sacy_FileExtractor{
 
             $path = $this->urlToFile($attrs['src']);
             if ($path === false) return false;
-            return array('', $path);
+            return array('', $path, $attrs['type']);
         }
         return false;
     }
