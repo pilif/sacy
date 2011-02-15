@@ -1,21 +1,22 @@
 #!/usr/bin/env php
 <?php
 
-$args = getopt("cjh", array('with-phamlp::'));
-$pruneargv = array();
-foreach ($args as $o => $v) {
-  foreach ($_SERVER['argv'] as $key => $chunk) {
-    $regex = '/^'. (isset($o[1]) ? '--' : '-') . $o . '/';
-    if ($chunk == $v && $_SERVER['argv'][$key-1][0] == '-' || preg_match($regex, $chunk)) {
-      array_push($pruneargv, $key);
+$args = getopt("cjh", array('with-phamlp::', 'with-lessphp::'));
+if ($args){
+    $pruneargv = array();
+    foreach ($args as $o => $v) {
+      foreach ($_SERVER['argv'] as $key => $chunk) {
+        $regex = '/^'. (isset($o[1]) ? '--' : '-') . $o . '/';
+        if ($chunk == $v && $_SERVER['argv'][$key-1][0] == '-' || preg_match($regex, $chunk)) {
+          array_push($pruneargv, $key);
+        }
+      }
     }
-  }
+    while ($key = array_pop($pruneargv))
+        unset($_SERVER['argv'][$key]);
+    $_SERVER['argv'] = array_values($_SERVER['argv']);
 }
-while ($key = array_pop($pruneargv))
-    unset($_SERVER['argv'][$key]);
-$_SERVER['argv'] = array_values($_SERVER['argv']);
-
-if ($args['h'] || !$_SERVER['argv'][1] || !is_readable($_SERVER['argv'][1])){
+if (!$args || $args['h'] || !$_SERVER['argv'][1] || !is_readable($_SERVER['argv'][1])){
     fwrite(STDERR, "usage: build.php [-c] [-j] [--with-PACKAGE=<path>] <configfile>
     -c: Include CSSMin into bundle
     -j: Include JSMin into bundle
