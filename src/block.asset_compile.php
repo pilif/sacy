@@ -60,6 +60,8 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             $render = array();
             $curr_cat = $f[0][0];
             foreach($f as $fileentry){
+                $type = $fileentry[2];
+
                 // the moment the category changes, render all we have so far
                 // this makes it IMPERATIVE to keep links of the same category
                 // together.
@@ -74,9 +76,9 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
                     // add redered stuff to patched content
                     $rendered_content .= $res;
                     $curr_cat = $fileentry[0];
-                    $render = array($fileentry[1]);
+                    $render = array(array('name' => $fileentry[1], 'type' => $type));
                 }else{
-                    $render[] = $fileentry[1];
+                    $render[] = array('name' => $fileentry[1], 'type' => $type);
                 }
             }
             $res = $renderer->renderFiles($tag, $curr_cat, $render);

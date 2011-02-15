@@ -176,7 +176,7 @@ interface sacy_CacheRenderHandler{
     function __construct(sacy_Config $cfg, $smarty);
     function getFileExtension();
     function writeHeader($fh, $files);
-    function processFile($fh, $filename);
+    function processFile($fh, $file);
     function getConfig();
 }
 
@@ -207,18 +207,18 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy javascript cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($files as $file){
-            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file));
+            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
         }
         fwrite($fh, "*/\n\n");
     }
 
-    function processFile($fh, $filename){
+    function processFile($fh, $file){
         if ($this->getConfig()->get('write_headers'))
-            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
-        $js = @file_get_contents($filename);
+            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
+        $js = @file_get_contents($file['name']);
         if ($js == false){
-            fwrite($fhc, "/* <Error accessing file> */\n");
-            $this->getSmarty()->trigger_error("Error accessing JavaScript-File: $filename");
+            fwrite($fh, "/* <Error accessing file> */\n");
+            $this->getSmarty()->trigger_error("Error accessing JavaScript-File: ".$file['name']);
             return;
         }
         fwrite($fh, JSMin::minify($js));
@@ -233,22 +233,22 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy css cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($files as $file){
-            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file));
+            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
         }
         fwrite($fh, "*/\n\n");
     }
 
-    function processFile($fh, $filename){
+    function processFile($fh, $file){
         if ($this->getConfig()->get('write_headers'))
-           fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $filename));
-        $css = @file_get_contents($filename); //maybe stream this later to save memory?
+           fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
+        $css = @file_get_contents($file['name']); //maybe stream this later to save memory?
         if ($css == false){
             fwrite($fh, "/* <Error accessing file> */\n");
-            $this->getSmarty()->trigger_error("Error accessing CSS-File: $filename");
+            $this->getSmarty()->trigger_error("Error accessing CSS-File: ".$file['name']);
             return;
         }
         fwrite($fh, Minify_CSS::minify($css, array(
-            'currentDir' => dirname($filename)
+            'currentDir' => dirname($file['name'])
         )));
     }
 }
@@ -271,13 +271,13 @@ function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
     if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
         mkdir(ASSET_COMPILE_OUTPUT_DIR);
 
-    $f = create_function('$f', 'return basename($f, "'.$rh->getFileExtension().'");');
+    $f = create_function('$f', 'return basename($f["name"], "'.$rh->getFileExtension().'");');
     $ident = implode('-', array_map($f, $files));
     if (strlen($ident) > 120)
         $ident = 'many-files-'.md5($ident);
     $max = 0;
     foreach($files as $f){
-        $max = max($max, filemtime($f));
+        $max = max($max, filemtime($f['name']));
     }
     // not using the actual content for quicker access
     $key = md5($max . serialize($files));
