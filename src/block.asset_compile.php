@@ -31,7 +31,8 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             $p = str_replace('T', preg_quote($tag), $tag_pattern);
             if(preg_match_all($p, $content, $ms, PREG_OFFSET_CAPTURE)){
                 foreach($ms[1] as $i => $m)
-                   $work[] = array($tag, $m[0], $ms[0][$i][1], $ms[0][$i][0], $ms[2][$i][0], $aindex++);
+                    $work[] = array($tag, $m[0], $ms[0][$i][1], $ms[0][$i][0], $ms[2][$i][0], $aindex++);
+                                  // tag, attrdata, index in doc, whole tag, content, order of appearance
             }
         }
         // now sort task list by descending location offset
