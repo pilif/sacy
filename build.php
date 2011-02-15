@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 
-$args = getopt("cjh");
+$args = getopt("cjh", array('with-phamlp::'));
 $pruneargv = array();
 foreach ($args as $o => $v) {
   foreach ($_SERVER['argv'] as $key => $chunk) {
@@ -16,9 +16,16 @@ while ($key = array_pop($pruneargv))
 $_SERVER['argv'] = array_values($_SERVER['argv']);
 
 if ($args['h'] || !$_SERVER['argv'][1] || !is_readable($_SERVER['argv'][1])){
-    fwrite(STDERR, "usage: build.php [-c] [-j] <configfile>
+    fwrite(STDERR, "usage: build.php [-c] [-j] [--with-PACKAGE=<path>] <configfile>
     -c: Include CSSMin into bundle
-    -j: Include JSMin into bundle\n");
+    -j: Include JSMin into bundle
+
+    Packages are optional additional packages to include support for. If you
+    don't provide them, sacy will try using existing classes at runtime or
+    leave corresponding tags alone
+
+    --with-phamlp= path to unpacked source bundle of phamlp for
+                   text/sass and text/scss support\n");
     die(1);
 }
 
@@ -37,6 +44,15 @@ $arch->buildFromIterator(new SacySupportFilesFilter(
             new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcdir), RecursiveIteratorIterator::SELF_FIRST),
             $skipfiles
 ), $srcdir);
+if ($args['with-phamlp']){
+    $arch->buildFromIterator(new SacySupportFilesFilter(new RecursiveIteratorIterator(
+        new SacySkipSubdirsFilter(
+            new RecursiveDirectoryIterator($args['with-phamlp']),
+            array('haml')
+        ),
+        RecursiveIteratorIterator::SELF_FIRST
+    )), $args['with-phamlp']);
+}
 
 $arch->stopBuffering();
 $stub ='<?php Phar::interceptFileFuncs();
@@ -57,10 +73,23 @@ function de_phptag($str){
 
 }
 
+class SacySkipSubdirsFilter extends RecursiveFilterIterator{
+    private $skipdirs;
+
+    function __construct(RecursiveIterator $it, $skipdirs=null){
+        parent::__construct($it);
+        $this->skipdirs = $skipdirs ?: array();
+    }
+
+    public function accept() {
+        return !in_array($this->current()->getFilename(), $this->skipdirs);
+    }
+}
+
 class SacySupportFilesFilter extends FilterIterator{
     private $skipfiles;
 
-    function __construct(Iterator $it, $skipfiles){
+    function __construct(Iterator $it, $skipfiles=null){
         parent::__construct($it);
         $this->skipfiles = $skipfiles ?: array();
     }
