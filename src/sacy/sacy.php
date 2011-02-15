@@ -5,6 +5,13 @@ if (!class_exists('JSMin'))
 if (!class_exists('Minify_CSS'))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'cssmin.php')));
 
+if (!class_exists('lessc')){
+    $less = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'lessc.inc.php'));
+    if (file_exists($less)){
+        include_once($less);
+    }
+}
+
 /*
  *   An earlier experiment contained a real framework for tag
  *   and parser registration. In the end, this turned out
@@ -56,17 +63,18 @@ class sacy_FileExtractor{
         //
         //  - the tag contains content (invalid markup)
         //  - the tag uses any rel beside 'stylesheet' (valid, but not supported)
-        //  - the tag uses any type besides text/css (would maybe still work, but I can't be sure)
+        //  - the tag uses a not-supported type (
         $attrs = sacy_extract_attrs($attrdata);
         if (empty($content) && (strtolower($attrs['rel']) == 'stylesheet') &&
-            (!isset($attrs['type']) || strtolower($attrs['type']) == 'text/css')){
+            (!isset($attrs['type']) ||
+            (in_array(strtolower($attrs['type']), sacy_CssRenderHandler::supportedTransformations())))){
             if (!isset($attrs['media']))
                 $attrs['media'] = "";
 
             $path = $this->urlToFile($attrs['href']);
             if ($path === false) return false;
 
-            return array($attrs['media'], $path, $attrs['type']);
+            return array($attrs['media'], $path, strtolower($attrs['type']));
         }
         return false;
     }
@@ -83,7 +91,7 @@ class sacy_FileExtractor{
 
             $path = $this->urlToFile($attrs['src']);
             if ($path === false) return false;
-            return array('', $path, $attrs['type']);
+            return array('', $path, strtolower($attrs['type']));
         }
         return false;
     }
@@ -227,6 +235,14 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
 }
 
 class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
+    static function supportedTransformations(){
+        $res = array('', 'text/css');
+        if (class_exists('lessc'))
+            $res[] = 'text/x-less';
+
+        return $res;
+    }
+
     function getFileExtension() { return '.css'; }
 
     function writeHeader($fh, $files){
@@ -246,6 +262,11 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
             fwrite($fh, "/* <Error accessing file> */\n");
             $this->getSmarty()->trigger_error("Error accessing CSS-File: ".$file['name']);
             return;
+        }
+        if ($file['type'] == 'text/x-less'){
+            // if we end up here, the extractor let us in and so we have less support
+            $less = new lessc();
+            $css = $less->parse($css);
         }
         fwrite($fh, Minify_CSS::minify($css, array(
             'currentDir' => dirname($file['name'])
