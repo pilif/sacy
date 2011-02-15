@@ -25,8 +25,10 @@ if (!$args || $args['h'] || !$_SERVER['argv'][1] || !is_readable($_SERVER['argv'
     don't provide them, sacy will try using existing classes at runtime or
     leave corresponding tags alone
 
-    --with-phamlp= path to unpacked source bundle of phamlp for
-                   text/sass and text/scss support\n");
+    --with-phamlp=  path to unpacked source bundle of phamlp for
+                    text/sass and text/scss support
+    --with-lessphp= path to unpacked source bundle of lessphp for text/less
+                    support\n");
     die(1);
 }
 
@@ -53,6 +55,11 @@ if ($args['with-phamlp']){
         ),
         RecursiveIteratorIterator::SELF_FIRST
     )), $args['with-phamlp']);
+}
+if ($args['with-lessphp']){
+    $arch['sacy/lessc.inc.php'] = file_get_contents(
+        implode(DIRECTORY_SEPARATOR, array($args['with-lessphp'], 'lessc.inc.php'))
+    );
 }
 
 $arch->stopBuffering();
