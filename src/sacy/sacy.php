@@ -12,6 +12,13 @@ if (!class_exists('lessc')){
     }
 }
 
+if (!class_exists('SassParser')){
+    $sass = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), '..', 'sass', 'SassParser.php'));
+    if (file_exists($sass)){
+        include_once($sass);
+    }
+}
+
 /*
  *   An earlier experiment contained a real framework for tag
  *   and parser registration. In the end, this turned out
@@ -260,6 +267,8 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
         $res = array('', 'text/css');
         if (class_exists('lessc'))
             $res[] = 'text/x-less';
+        if (class_exists('SassParser'))
+            $res = array_merge($res, array('text/x-sass', 'text/x-scss'));
 
         return $res;
     }
@@ -281,6 +290,7 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
     }
 
     function processFile($fh, $file){
+        $debug = $this->getConfig()->getDebugMode() == 3;
         if ($this->getConfig()->get('write_headers'))
            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
         $css = @file_get_contents($file['name']); //maybe stream this later to save memory?
@@ -294,7 +304,18 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
             $less = new lessc();
             $css = $less->parse($css);
         }
-        if ($this->getConfig()->getDebugMode() == 3){
+        if (in_array($file['type'], array('text/x-scss', 'text/x-sass'))){
+            $config = array(
+                'cache' => false, // no need. WE are the cache!
+                'debug_info' => $debug,
+                'line' => $debug,
+                'quiet' => true,
+                'style' => $debug ? 'nested' : 'compressed'
+            );
+            $sass = new SassParser($config);
+            $css = $sass->toCss($css, false); // isFile?
+        }
+        if ($debug){
             fwrite($fh, $css);
         }else{
             fwrite($fh, Minify_CSS::minify($css, array(
