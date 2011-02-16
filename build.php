@@ -48,13 +48,13 @@ $arch->buildFromIterator(new SacySupportFilesFilter(
             $skipfiles
 ), $srcdir);
 if ($args['with-phamlp']){
-    $arch->buildFromIterator(new SacySupportFilesFilter(new RecursiveIteratorIterator(
+    $arch->buildFromIterator(new RecursiveIteratorIterator(
         new SacySkipSubdirsFilter(
             new RecursiveDirectoryIterator($args['with-phamlp']),
             array('haml')
         ),
         RecursiveIteratorIterator::SELF_FIRST
-    )), $args['with-phamlp']);
+    ), $args['with-phamlp']);
 }
 if ($args['with-lessphp']){
     $arch['sacy/lessc.inc.php'] = file_get_contents(
