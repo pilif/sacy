@@ -1,2 +1,10 @@
+Version 0.2 (2011-??-?? - unreleased):
+ - Support for bundling as a phar archive (requires PHP 5.3)
+ - Support for bundling lessphp and Phamlp
+ - Support for transforming LESS files before compression
+ - New debug mode (3) to only do transforms (useful for development)
+ - Removes whitespace surrounding replaced tags
+ - Now treating interfixed JS and CSS as separate entities
+
 Version 0.1 (2009-09-17):
  - initial public release
