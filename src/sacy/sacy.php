@@ -65,6 +65,11 @@ class sacy_FileExtractor{
         //  - the tag uses any rel beside 'stylesheet' (valid, but not supported)
         //  - the tag uses a not-supported type (
         $attrs = sacy_extract_attrs($attrdata);
+        $attrs['type'] = strtolower($attrs['type']);
+        if ($this->_cfg->getDebugMode() == 3 &&
+                !sacy_CssRenderHandler::willTransformType($attrs['type']))
+            return false;
+
         if (empty($content) && (strtolower($attrs['rel']) == 'stylesheet') &&
             (!isset($attrs['type']) ||
             (in_array(strtolower($attrs['type']), sacy_CssRenderHandler::supportedTransformations())))){
@@ -74,7 +79,11 @@ class sacy_FileExtractor{
             $path = $this->urlToFile($attrs['href']);
             if ($path === false) return false;
 
-            return array($attrs['media'], $path, strtolower($attrs['type']));
+            return array(
+                'group' => $attrs['media'],
+                'name' => $path,
+                'type' => $attrs['type']
+            );
         }
         return false;
     }
@@ -84,6 +93,10 @@ class sacy_FileExtractor{
         if (preg_match('#\S+#', $content)) return false;
 
         $attrs = sacy_extract_attrs($attrdata);
+        $attrs['type'] == strtolower($attrs['type']);
+        if ($this->_cfg->getDebugMode() == 3 &&
+                !sacy_JavaScriptRenderHandler::willTransformType($attrs['type']))
+            return false;
 
         if ( ($attrs['type'] == 'text/javascript' ||
                 $attrs['type'] == 'application/javascript') &&
@@ -91,7 +104,11 @@ class sacy_FileExtractor{
 
             $path = $this->urlToFile($attrs['src']);
             if ($path === false) return false;
-            return array('', $path, strtolower($attrs['type']));
+            return array(
+                'group' => '',
+                'name' => $path,
+                'type' => $attrs['type']
+            );
         }
         return false;
     }
@@ -183,6 +200,7 @@ class sacy_CacheRenderer {
 interface sacy_CacheRenderHandler{
     function __construct(sacy_Config $cfg, $smarty);
     function getFileExtension();
+    static function willTransformType($type);
     function writeHeader($fh, $files);
     function processFile($fh, $file);
     function getConfig();
@@ -205,6 +223,9 @@ abstract class sacy_ConfiguredRenderHandler implements sacy_CacheRenderHandler{
         return $this->_cfg;
     }
 
+    static public function willTransformType($type){
+        return false;
+    }
 }
 
 class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
@@ -245,6 +266,11 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
 
     function getFileExtension() { return '.css'; }
 
+    static function willTransformType($type){
+        // transforming everything but plain old CSS
+        return !in_array($type, array('', 'text/css'));
+    }
+
     function writeHeader($fh, $files){
         fwrite($fh, "/*\nsacy css cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
@@ -268,9 +294,13 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
             $less = new lessc();
             $css = $less->parse($css);
         }
-        fwrite($fh, Minify_CSS::minify($css, array(
-            'currentDir' => dirname($file['name'])
-        )));
+        if ($this->getConfig()->getDebugMode() == 3){
+            fwrite($fh, $css);
+        }else{
+            fwrite($fh, Minify_CSS::minify($css, array(
+                'currentDir' => dirname($file['name'])
+            )));
+        }
     }
 }
 

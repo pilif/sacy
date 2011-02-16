@@ -39,60 +39,79 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
                                   // tag, attrdata, index in doc, whole tag, content, order of appearance
             }
         }
+
         // now sort task list by descending location offset
         // by the way: I want widespread 5.3 adoption for anonymous functions
         usort($work, create_function('$a,$b', 'if ($a[2] == $b[2]) return 0; return ($a[2] < $b[2]) ? 1 : -1;'));
         $ex = new sacy_FileExtractor($cfg);
         $files = array();
-        $patched_content = $content;
+
         foreach($work as $unit){
             $r = $ex->extractFile($unit[0], $unit[1], $unit[4]);
             if ($r === false) continue; // handler has declined
-            $r[] = $unit[5]; //append appearance order index
-
-            // remove tag
-            $patched_content = substr_replace($patched_content, '', $unit[2], strlen($unit[3]));
-            $files[$unit[0]][] = $r;
+            $r = array_merge($r, array(
+                'page_order' => $unit[5],
+                'position' => $unit[2],
+                'length' => strlen($unit[3]),
+                'tag' => $unit[0]
+            ));
+            $r[] = $unit[0];
+            $files[] = $r;
         }
 
         $renderer = new sacy_CacheRenderer($cfg, $smarty);
-        $rendered_content = "";
+        $patched_content = $content;
 
-        // now put the files back in order of appearance in the original template
-        foreach($files as $tag => &$f){
-            usort($f, create_function('$a,$b', 'if ($a[3] == $b[3]) return 0; return ($a[3] > $b[3]) ? 1 : -1;'));
-            $render = array();
-            $curr_cat = $f[0][0];
-            foreach($f as $fileentry){
-                $type = $fileentry[2];
+        $render = array();
+        $curr_cat = $files[0]['group'].$files[0]['tag'];
 
-                // the moment the category changes, render all we have so far
-                // this makes it IMPERATIVE to keep links of the same category
-                // together.
-                if ($curr_cat != $fileentry[0]){
-                    $res = $renderer->renderFiles($tag, $curr_cat, $render);
-                    if ($res === false){
-                        // rendering failed.
-                        // because we don't know which one, we just enter emergency mode
-                        // and return the initial content unharmed:
-                        return $content;
-                    }
-                    // add redered stuff to patched content
-                    $rendered_content .= $res;
-                    $curr_cat = $fileentry[0];
-                    $render = array(array('name' => $fileentry[1], 'type' => $type));
-                }else{
-                    $render[] = array('name' => $fileentry[1], 'type' => $type);
+        foreach($files as $i => $entry){
+            $cg = $entry['group'].$entry['tag'];
+
+            // the moment the category changes, render all we have so far
+            // this makes it IMPERATIVE to keep links of the same category
+            // together.
+            if ($curr_cat != $cg || ($cfg->getDebugMode() == 3 && count($render))){
+                $render_order = array_reverse($render);
+                $res = $renderer->renderFiles($files[$i-1]['tag'], $files[$i-1]['group'], $render_order);
+                if ($res === false){
+                    // rendering failed.
+                    // because we don't know which one, we just enter emergency mode
+                    // and return the initial content unharmed:
+                    return $content;
                 }
+                // add rendered stuff to patched content
+                $m = null;
+                foreach($render as $r){
+                    if ($m == null) $m = $r['position'];
+                    if ($r['position'] < $m) $m = $r['position'];
+                    // remove tag
+                    $pc = $patched_content;
+                    $patched_content = substr_replace($patched_content, '', $r['position'], $r['length']);
+                }
+                // splice in replacement
+                $patched_content = substr_replace($patched_content, $res, $m, 0);
+                $curr_cat = $cg;
+                $render = array($entry);
+            }else{
+                $render[] = $entry;
             }
-            $res = $renderer->renderFiles($tag, $curr_cat, $render);
-            if ($res === false){
-                // see last comment
-                return $content;
-            }
-            $rendered_content .= $res;
         }
-
-        return $rendered_content.$patched_content;
+        $render_order = array_reverse($render);
+        $res = $renderer->renderFiles($entry['tag'], $entry['group'], $render_order);
+        if ($res === false){
+            // see last comment
+            return $content;
+        }
+        $m = null;
+        foreach($render as $r){
+            if ($m == null) $m = $r['position'];
+            if ($r['position'] < $m) $m = $r['position'];
+            // remove tag
+            $pc = $patched_content;
+            $patched_content = substr_replace($patched_content, '', $r['position'], $r['length']);
+        }
+        $patched_content = substr_replace($patched_content, $res, $m, 0);
+        return $patched_content;
     }
 }
