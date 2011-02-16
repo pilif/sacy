@@ -86,7 +86,6 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
                     if ($m == null) $m = $r['position'];
                     if ($r['position'] < $m) $m = $r['position'];
                     // remove tag
-                    $pc = $patched_content;
                     $patched_content = substr_replace($patched_content, '', $r['position'], $r['length']);
                 }
                 // splice in replacement
@@ -108,7 +107,6 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             if ($m == null) $m = $r['position'];
             if ($r['position'] < $m) $m = $r['position'];
             // remove tag
-            $pc = $patched_content;
             $patched_content = substr_replace($patched_content, '', $r['position'], $r['length']);
         }
         $patched_content = substr_replace($patched_content, $res, $m, 0);
