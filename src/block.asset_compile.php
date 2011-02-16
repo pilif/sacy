@@ -22,7 +22,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         }
 
         $tags = array('link', 'script');
-        $tag_pattern = '#<\s*T\s+(.*)\s*(?:/>|>(.*)</T>)#Ui';
+        $tag_pattern = '#\s*<\s*T\s+(.*)\s*(?:/>|>(.*)</T>)\s*#Uim';
         $work = array();
         $aindex = 0;
 
