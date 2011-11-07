@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 
-$args = getopt("cjh", array('with-phamlp::', 'with-lessphp::'));
+$args = getopt("o:cjh", array('with-phamlp::', 'with-lessphp::'));
 if ($args){
     $pruneargv = array();
     foreach ($args as $o => $v) {
@@ -17,9 +17,10 @@ if ($args){
     $_SERVER['argv'] = array_values($_SERVER['argv']);
 }
 if (!$args || $args['h']){
-    fwrite(STDERR, "usage: build.php [-c] [-j] [--with-PACKAGE=<path>]
+    fwrite(STDERR, "usage: build.php [-o <output dir name>] [-c] [-j] [--with-PACKAGE=<path>]
     -c: Include CSSMin into bundle
     -j: Include JSMin into bundle
+    -o: Write output to <output dir name> instead of build/
 
     Packages are optional additional packages to include support for. If you
     don't provide them, sacy will try using existing classes at runtime or
@@ -39,7 +40,9 @@ $skipfiles['block.asset_compile.php'] = true; // this will be used as phar stub
 
 $srcdir = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'src'));
 $outfile = 'block.asset_compile.php';
-$target = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'build', 'temp.phar'));
+$outdir = isset($args['o']) ? $args['o'] : implode(DIRECTORY_SEPARATOR, array(__DIR__, 'build'));
+$target = implode(DIRECTORY_SEPARATOR, array($outdir, 'temp.phar'));
+
 $arch = new Phar($target, 0, 'sacy.phar');
 #$arch->compressFiles(Phar::GZ);
 $arch->startBuffering();
@@ -72,7 +75,7 @@ $stub ='<?php Phar::interceptFileFuncs();
 $arch->setStub($stub);
 
 $arch = null;
-rename($target, dirname($target).DIRECTORY_SEPARATOR.$outfile);
+rename($target, implode(DIRECTORY_SEPARATOR, array($outdir, $outfile)));
 die(0);
 
 function de_phptag($str){
