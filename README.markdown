@@ -200,7 +200,7 @@ Inside an `{asset_compile}` tag, just link to these files like so:
     {/asset_compile}
 
 Sacy uses the mime-types you provide with the type attribute to invoke the
-correct transformer transformer before writing the file to the cache.
+correct transformer before writing the file to the cache.
 
 See below for some information about dependencies and how to bundle them.
 

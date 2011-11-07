@@ -4,7 +4,7 @@ if (!defined("____SACY_BUNDLED"))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
 
 if (!(defined("ASSET_COMPILE_OUTPUT_DIR") && defined("ASSET_COMPILE_URL_ROOT"))){
-    throw new sacy_Exception("Failed to initialize becuase path configuration is not set (ASSET_COMPILE_OUTPUT_DIR and ASSET_COMPILE_URL_ROOT)");
+    throw new sacy_Exception("Failed to initialize because path configuration is not set (ASSET_COMPILE_OUTPUT_DIR and ASSET_COMPILE_URL_ROOT)");
 }
 
 function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
