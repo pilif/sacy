@@ -12,6 +12,13 @@ if (!class_exists('lessc')){
     }
 }
 
+if (!function_exists('CoffeeScript\compile')){
+    $coffee = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), '..', 'coffeescript', 'coffeescript.php'));
+    if (file_exists($coffee)){
+        include_once($coffee);
+    }
+}
+
 if (!class_exists('SassParser')){
     $sass = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), '..', 'sass', 'SassParser.php'));
     if (file_exists($sass)){
@@ -95,20 +102,27 @@ class sacy_FileExtractor{
         return false;
     }
 
+    private function validTag($attrs){
+        $types = array_merge(array('text/javascript', 'application/javascript'), sacy_JavascriptRenderHandler::supportedTransformations());
+        return  in_array(
+            $attrs['type'],
+            $types
+        ) && !empty($attrs['src']);
+    }
+
     private function extract_js_file($attrdata, $content){
         // don't handle non-empty tags
         if (preg_match('#\S+#', $content)) return false;
 
         $attrs = sacy_extract_attrs($attrdata);
-        $attrs['type'] == strtolower($attrs['type']);
+        $attrs['type'] = strtolower($attrs['type']);
         if ($this->_cfg->getDebugMode() == 3 &&
-                !sacy_JavaScriptRenderHandler::willTransformType($attrs['type']))
+                !sacy_JavaScriptRenderHandler::willTransformType($attrs['type'])){
             return false;
+        }
 
-        if ( ($attrs['type'] == 'text/javascript' ||
-                $attrs['type'] == 'application/javascript') &&
-             (isset($attrs['src']) && !empty($attrs['src'])) ){
 
+        if ($this->validTag($attrs)) {
             $path = $this->urlToFile($attrs['src']);
             if ($path === false) return false;
             return array(
@@ -236,6 +250,16 @@ abstract class sacy_ConfiguredRenderHandler implements sacy_CacheRenderHandler{
 }
 
 class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
+    static function supportedTransformations(){
+        if (function_exists('CoffeeScript\compile'))
+            return array('text/coffeescript');
+        return array();
+    }
+
+    static function willTransformType($type){
+        // transforming everything but plain old CSS
+        return in_array($type, static::supportedTransformations());
+    }
 
     function getFileExtension() { return '.js'; }
 
@@ -249,6 +273,8 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
     }
 
     function processFile($fh, $file){
+        $debug = $this->getConfig()->getDebugMode() == 3;
+
         if ($this->getConfig()->get('write_headers'))
             fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
         $js = @file_get_contents($file['name']);
@@ -257,7 +283,14 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
             $this->getSmarty()->trigger_error("Error accessing JavaScript-File: ".$file['name']);
             return;
         }
-        fwrite($fh, JSMin::minify($js));
+        if ($file['type'] == 'text/coffeescript'){
+            $js = Coffeescript\compile($js);
+        }
+        if ($debug){
+            fwrite($fh, $js);
+        }else{
+            fwrite($fh, JSMin::minify($js));
+        }
     }
 
 }

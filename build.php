@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 
-$args = getopt("z:o:cjh", array('with-phamlp::', 'with-lessphp::'));
+$args = getopt("z:o:cjh", array('with-phamlp::', 'with-lessphp::', 'with-coffeescript-php::'));
 if ($args){
     $pruneargv = array();
     foreach ($args as $o => $v) {
@@ -27,10 +27,11 @@ if (!$args || $args['h']){
     don't provide them, sacy will try using existing classes at runtime or
     leave corresponding tags alone
 
-    --with-phamlp=  path to unpacked source bundle of phamlp for
-                    text/sass and text/scss support
-    --with-lessphp= path to unpacked source bundle of lessphp for text/less
-                    support\n");
+    --with-coffeescript-php= path to unpacked source of coffeescript-php
+    --with-phamlp=           path to unpacked source bundle of phamlp for
+                             text/sass and text/scss support
+    --with-lessphp=          path to unpacked source bundle of lessphp for
+                             text/less support\n");
     die(1);
 }
 
@@ -64,6 +65,23 @@ $arch->buildFromIterator(new SacySupportFilesFilter(
             new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcdir), RecursiveIteratorIterator::SELF_FIRST),
             $skipfiles
 ), $srcdir);
+
+if ($args['with-coffeescript-php']){
+    $dir = $args['with-coffeescript-php'];
+    if (!is_dir($dir)){
+        fwrite(STDERR, "--with-coffeescript-php specified, but coffeescript not found there.\n");
+        exit(1);
+    }
+
+
+    $d = preg_quote(implode(DIRECTORY_SEPARATOR, array($dir, 'coffeescript')), '#');
+    $i = new SacyRegexWhitelistFilter(new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir),
+        RecursiveIteratorIterator::SELF_FIRST
+    ), "#^$d#");
+
+    $arch->buildFromIterator($i, $dir);
+}
 if ($args['with-phamlp']){
     $arch->buildFromIterator(new RecursiveIteratorIterator(
         new SacySkipSubdirsFilter(
@@ -112,6 +130,20 @@ class SacySkipSubdirsFilter extends RecursiveFilterIterator{
     public function accept() {
         return !in_array($this->current()->getFilename(), $this->skipdirs);
     }
+}
+
+class SacyRegexWhitelistFilter extends FilterIterator{
+    private $wl = '#.#';
+
+    function __construct(Iterator $it, $wl = null){
+        parent::__construct($it);
+        $this->wl = $wl ?: '#.#';
+    }
+
+    function accept(){
+        return preg_match($this->wl, $this->current()->getPathName());
+    }
+
 }
 
 class SacySupportFilesFilter extends FilterIterator{
