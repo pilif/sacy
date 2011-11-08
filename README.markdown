@@ -309,9 +309,9 @@ Features
 There are other solutions for this around, but sacy has a few really unique
 features:
 
-* **Transformations**: Sacy can transform less, sass and scss files for you
-without making you remember to run deployment scripts or keeping an additional
-daemon running that recompiles stuff.
+* **Transformations**: Sacy can transform less, sass, scss and coffee script
+files for you without making you remember to run deployment scripts or
+keeping an additional daemon running that recompiles stuff.
 
 * **Fallback**: If at any time there is an issue in generating the cached copy,
 sacy will not alter the existing link tags. Sure: More requests will be sent to
@@ -412,7 +412,13 @@ files.
 `--with-lessphp=<dir>`: pass the path to the extracted source code
 archive of lessphp. This will enable sacy to transform less files.
 
-As before: If you don't bundle these two but you have them loaded somewhere
+`--with-coffeescript-php=<dir>`: pass the path to the extracted source code
+repository clone of coffeescript-php (https://github.com/alxlit/coffeescript-php).
+If you provide this, sacy will transform coffee script files to javascript
+for you.
+
+
+As before: If you don't bundle these three but you have them loaded somewhere
 before sacy is used, then sacy will use your already loaded copy to do
 the thing.
 
@@ -420,6 +426,9 @@ After the script has run, you will find the compiled
 
 `block.asset_compile.php` in the `build/` subdirectory. Place that (yes
 just that one file) in your smarty plugins directory and you're done.
+
+You can provide a `-o` parameter to `build.php` to have
+`block_asset_compile.php` written in another directory of your choice.
 
 
 Known Issues
