@@ -1,3 +1,8 @@
+Version 0.3 (????-??-??):
+ - Support for compiling coffee script
+ - Support for writing a compressed phar archive
+ - Support to specify an output directory for build.php
+
 Version 0.2 (2011-02-16):
  - Support for bundling as a phar archive (requires PHP 5.3)
  - Support for bundling lessphp and Phamlp
