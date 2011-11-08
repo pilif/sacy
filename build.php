@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 
-$args = getopt("o:cjh", array('with-phamlp::', 'with-lessphp::'));
+$args = getopt("z:o:cjh", array('with-phamlp::', 'with-lessphp::'));
 if ($args){
     $pruneargv = array();
     foreach ($args as $o => $v) {
@@ -17,10 +17,11 @@ if ($args){
     $_SERVER['argv'] = array_values($_SERVER['argv']);
 }
 if (!$args || $args['h']){
-    fwrite(STDERR, "usage: build.php [-o <output dir name>] [-c] [-j] [--with-PACKAGE=<path>]
+    fwrite(STDERR, "usage: build.php [-o <output dir name>] [-c] [-j] [-z [g|b]] [--with-PACKAGE=<path>]
     -c: Include CSSMin into bundle
     -j: Include JSMin into bundle
     -o: Write output to <output dir name> instead of build/
+    -z: Compress the contents of the bundle with bzip2 (b) or gzip (g)
 
     Packages are optional additional packages to include support for. If you
     don't provide them, sacy will try using existing classes at runtime or
@@ -31,6 +32,20 @@ if (!$args || $args['h']){
     --with-lessphp= path to unpacked source bundle of lessphp for text/less
                     support\n");
     die(1);
+}
+
+$comp = Phar::NONE;
+if (isset($args['z'])){
+    switch($args['z']){
+        case 'g':
+            $comp = Phar::GZ;
+            break;
+        case 'b':
+            $comp = Phar::BZ2;
+            break;
+        default:
+            fwrite(STDERR, "Invalid compression method\n");
+    }
 }
 
 $skipfiles = array();
@@ -44,7 +59,6 @@ $outdir = isset($args['o']) ? $args['o'] : implode(DIRECTORY_SEPARATOR, array(__
 $target = implode(DIRECTORY_SEPARATOR, array($outdir, 'temp.phar'));
 
 $arch = new Phar($target, 0, 'sacy.phar');
-#$arch->compressFiles(Phar::GZ);
 $arch->startBuffering();
 $arch->buildFromIterator(new SacySupportFilesFilter(
             new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcdir), RecursiveIteratorIterator::SELF_FIRST),
@@ -66,6 +80,10 @@ if ($args['with-lessphp']){
 }
 
 $arch->stopBuffering();
+
+if ($comp != Phar::NONE)
+    $arch->compressFiles($comp);
+
 $stub ='<?php Phar::interceptFileFuncs();
     define("____SACY_BUNDLED", 1);
     Phar::mapPhar("sacy.phar");
