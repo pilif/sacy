@@ -126,7 +126,7 @@ class SacySupportFilesFilter extends FilterIterator{
         if ($this->current()->isDir())
             return false;
         if (!preg_match('#\.(php)$#', $this->current()->getFilename()))
-            return false;;
+            return false;
         if ($this->skipfiles[$this->current()->getFilename()])
             return false;
 
