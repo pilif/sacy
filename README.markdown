@@ -344,9 +344,7 @@ currently released phamlp has [an issue with @import](http://code.google.com/p/p
 - the build script patches the library accordingly
 
 `--with-lessphp=<dir>`: pass the path to the extracted source code archive of
-lessphp. This will enable sacy to transform less files (note that lessphp
-cannot correctly handle @import. Use the external tool (see below) if you want
-to use @import)
+lessphp. This will enable sacy to transform less files.
 
 `--with-coffeescript-php=<dir>`: pass the path to the extracted source code
 repository clone of coffeescript-php (https://github.com/alxlit/coffeescript-php).

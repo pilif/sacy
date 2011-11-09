@@ -348,6 +348,7 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
         }else{
             if ($file['type'] == 'text/x-less'){
                 $less = new lessc();
+                $less->importDir = dirname($file['name']).'/'; #lessphp concatenates without a /
                 $css = $less->parse($css);
             }
             if (in_array($file['type'], array('text/x-scss', 'text/x-sass'))){
