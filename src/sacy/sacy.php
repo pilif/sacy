@@ -452,8 +452,3 @@ function sacy_write_cache(&$smarty, $cfile, $files, sacy_CacheRenderHandler $rh)
     unlink($lockfile);
     return true;
 }
-
-
-
-
-
