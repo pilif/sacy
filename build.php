@@ -83,6 +83,12 @@ if ($args['with-coffeescript-php']){
     $arch->buildFromIterator($i, $dir);
 }
 if ($args['with-phamlp']){
+    $p = sprintf('patch -N -d %s -p1 -i %s',
+        escapeshellarg($args['with-phamlp']),
+        escapeshellarg(implode(DIRECTORY_SEPARATOR, array(__DIR__, 'sass-fix-import.patch')))
+    );
+    exec($p);
+
     $arch->buildFromIterator(new RecursiveIteratorIterator(
         new SacySkipSubdirsFilter(
             new RecursiveDirectoryIterator($args['with-phamlp']),

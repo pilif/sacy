@@ -1,0 +1,12 @@
+diff -ru PHamlP_3.2/sass/tree/SassImportNode.php PHamlP_3.2.patched/sass/tree/SassImportNode.php
+--- PHamlP_3.2/sass/tree/SassImportNode.php	2010-09-06 09:40:48.000000000 +0200
++++ PHamlP_3.2.patched/sass/tree/SassImportNode.php	2011-11-09 17:14:01.000000000 +0100
+@@ -53,7 +53,7 @@
+ 				return "@import {$file}";
+ 			}
+ 			else {
+-				$file = trim($file, '\'"');
++				$file = trim($file, '\'";');
+ 				$tree = SassFile::getTree(
+ 					SassFile::getFile($file, $this->parser), $this->parser);
+ 				if (empty($tree)) {

@@ -352,6 +352,8 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
                 'cache' => false, // no need. WE are the cache!
                 'debug_info' => $debug,
                 'line' => $debug,
+                'load_paths' => array(dirname($file['name'])),
+                'filename' => $file['name'],
                 'quiet' => true,
                 'style' => $debug ? 'nested' : 'compressed'
             );
