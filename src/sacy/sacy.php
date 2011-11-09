@@ -1,7 +1,11 @@
 <?php
 
-if (!class_exists('JSMin'))
+if (!defined("____SACY_BUNDLED"))
+    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'external-translators.php')));
+
+if (!class_exists('JSMin') && !ExternalProcessorRegistry::typeIsSupported('text/javascript'))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'jsmin.php')));
+
 if (!class_exists('Minify_CSS'))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'cssmin.php')));
 
@@ -12,7 +16,7 @@ if (!class_exists('lessc')){
     }
 }
 
-if (!function_exists('CoffeeScript\compile')){
+if (!function_exists('CoffeeScript\compile') && !ExternalProcessorRegistry::typeIsSupported('text/coffeescript')){
     $coffee = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), '..', 'coffeescript', 'coffeescript.php'));
     if (file_exists($coffee)){
         include_once($coffee);
@@ -144,9 +148,10 @@ class sacy_Config{
     }
 
     public function __construct($params = null){
-        $this->params['query_strings'] = 'ignore';
-        $this->params['write_headers'] = true;
-        $this->params['debug_toggle']  = '_sacy_debug';
+        $this->params['query_strings'] = defined('SACY_QUERY_STINGS') ? SACY_QUERY_STRINGS : 'ignore';
+        $this->params['write_headers'] = defined('SACY_WRITE_HEADERS') ? SACY_WRITE_HEADERS : true;
+        $this->params['debug_toggle']  = defined('SACY_DEBUG_TOGGLE') ? SACY_DEBUG_TOGGLE : '_sacy_debug';
+
         if (is_array($params))
             $this->setParams($params);
     }
@@ -251,7 +256,7 @@ abstract class sacy_ConfiguredRenderHandler implements sacy_CacheRenderHandler{
 
 class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
     static function supportedTransformations(){
-        if (function_exists('CoffeeScript\compile'))
+        if (function_exists('CoffeeScript\compile') || ExternalProcessorRegistry::typeIsSupported('text/coffeescript'))
             return array('text/coffeescript');
         return array();
     }
@@ -284,12 +289,17 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
             return;
         }
         if ($file['type'] == 'text/coffeescript'){
-            $js = Coffeescript\compile($js);
+            $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
+                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js) :
+                Coffeescript\compile($js);
         }
         if ($debug){
             fwrite($fh, $js);
         }else{
-            fwrite($fh, JSMin::minify($js));
+            fwrite($fh, ExternalProcessorRegistry::typeIsSupported('text/javascript') ?
+                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js) :
+                JSMin::minify($js)
+            );
         }
     }
 

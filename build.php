@@ -105,7 +105,9 @@ if ($comp != Phar::NONE)
 $stub ='<?php Phar::interceptFileFuncs();
     define("____SACY_BUNDLED", 1);
     Phar::mapPhar("sacy.phar");
-    include("phar://sacy.phar/sacy/sacy.php");'.
+    include("phar://sacy.phar/sacy/ext-translators.php");
+    include("phar://sacy.phar/sacy/sacy.php");
+    '.
     de_phptag(file_get_contents($srcdir.DIRECTORY_SEPARATOR.'block.asset_compile.php')).
     "\n__HALT_COMPILER();";
 $arch->setStub($stub);
