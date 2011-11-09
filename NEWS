@@ -1,8 +1,10 @@
-Version 0.3 (????-??-??):
+Version 0.3 (2011-12-??):
  - Patch phamlp to correctly support @import
  - Support for external tools for transforming/minimizing
  - Support for uglyfier.js
  - Support for the official sass compiler
+ - Support for the official less compiler (requires git HEAD)
+ - Improved error handling
  - Support for setting global config-defaults
  - Support for compiling coffee script
  - Support for writing a compressed phar archive
