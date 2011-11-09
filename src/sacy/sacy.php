@@ -23,7 +23,7 @@ if (!function_exists('CoffeeScript\compile') && !ExternalProcessorRegistry::type
     }
 }
 
-if (!class_exists('SassParser')){
+if (!class_exists('SassParser') && !ExternalProcessorRegistry::typeIsSupported('text/x-sass')){
     $sass = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), '..', 'sass', 'SassParser.php'));
     if (file_exists($sass)){
         include_once($sass);
@@ -310,7 +310,7 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
         $res = array('', 'text/css');
         if (class_exists('lessc'))
             $res[] = 'text/x-less';
-        if (class_exists('SassParser'))
+        if (class_exists('SassParser') || ExternalProcessorRegistry::typeIsSupported('text/x-sass'))
             $res = array_merge($res, array('text/x-sass', 'text/x-scss'));
 
         return $res;
@@ -348,17 +348,21 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
             $css = $less->parse($css);
         }
         if (in_array($file['type'], array('text/x-scss', 'text/x-sass'))){
-            $config = array(
-                'cache' => false, // no need. WE are the cache!
-                'debug_info' => $debug,
-                'line' => $debug,
-                'load_paths' => array(dirname($file['name'])),
-                'filename' => $file['name'],
-                'quiet' => true,
-                'style' => $debug ? 'nested' : 'compressed'
-            );
-            $sass = new SassParser($config);
-            $css = $sass->toCss($css, false); // isFile?
+            if (ExternalProcessorRegistry::typeIsSupported('text/x-sass')){
+                $css = ExternalProcessorRegistry::getTransformerForType($file['type'])->transform($css, $file['name']);
+            }else{
+                $config = array(
+                    'cache' => false, // no need. WE are the cache!
+                    'debug_info' => $debug,
+                    'line' => $debug,
+                    'load_paths' => array(dirname($file['name'])),
+                    'filename' => $file['name'],
+                    'quiet' => true,
+                    'style' => $debug ? 'nested' : 'compressed'
+                );
+                $sass = new SassParser($config);
+                $css = $sass->toCss($css, false); // isFile?
+            }
         }
         if ($debug){
             fwrite($fh, $css);

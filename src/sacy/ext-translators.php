@@ -91,6 +91,31 @@ class ProcessorCoffee extends ExternalProcessor{
     }
 }
 
+class ProcessorSass extends ExternalProcessor{
+
+    protected function getType(){
+        return 'text/x-sass';
+    }
+
+    protected function getCommandLine($filename){
+        if (!is_executable(SACY_TRANSFORMER_SASS)){
+            throw new Exception('SACY_TRANSFORMER_SASS defined but not executable');
+        }
+        return sprintf('%s --cache-location=%s -s %s -I %s',
+            SACY_TRANSFORMER_SASS,
+            escapeshellarg(sys_get_temp_dir()),
+            $this->getType() == 'text/x-scss' ? '--scss' : '',
+            escapeshellarg(dirname($filename))
+        );
+    }
+}
+
+class ProcessorScss extends ProcessorSass{
+    protected function getType(){
+        return 'text/x-scss';
+    }
+}
+
 
 if (defined('SACY_COMPRESSOR_UGLIFY')){
     ExternalProcessorRegistry::registerCompressor('text/javascript', 'ProcessorUglify');
@@ -98,4 +123,9 @@ if (defined('SACY_COMPRESSOR_UGLIFY')){
 
 if (defined('SACY_TRANSFORMER_COFFEE')){
     ExternalProcessorRegistry::registerTransformer('text/coffeescript', 'ProcessorCoffee');
+}
+
+if (defined('SACY_TRANSFORMER_SASS')){
+    ExternalProcessorRegistry::registerTransformer('text/x-sass', 'ProcessorSass');
+    ExternalProcessorRegistry::registerTransformer('text/x-scss', 'ProcessorScss');
 }
