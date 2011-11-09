@@ -9,7 +9,7 @@ if (!class_exists('JSMin') && !ExternalProcessorRegistry::typeIsSupported('text/
 if (!class_exists('Minify_CSS'))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'cssmin.php')));
 
-if (!class_exists('lessc')){
+if (!class_exists('lessc') && !ExternalProcessorRegistry::typeIsSupported('text/x-less')){
     $less = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'lessc.inc.php'));
     if (file_exists($less)){
         include_once($less);
@@ -308,7 +308,7 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
 class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
     static function supportedTransformations(){
         $res = array('', 'text/css');
-        if (class_exists('lessc'))
+        if (class_exists('lessc') || ExternalProcessorRegistry::typeIsSupported('text/x-less'))
             $res[] = 'text/x-less';
         if (class_exists('SassParser') || ExternalProcessorRegistry::typeIsSupported('text/x-sass'))
             $res = array_merge($res, array('text/x-sass', 'text/x-scss'));
@@ -342,15 +342,15 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
             $this->getSmarty()->trigger_error("Error accessing CSS-File: ".$file['name']);
             return;
         }
-        if ($file['type'] == 'text/x-less'){
-            // if we end up here, the extractor let us in and so we have less support
-            $less = new lessc();
-            $css = $less->parse($css);
-        }
-        if (in_array($file['type'], array('text/x-scss', 'text/x-sass'))){
-            if (ExternalProcessorRegistry::typeIsSupported('text/x-sass')){
-                $css = ExternalProcessorRegistry::getTransformerForType($file['type'])->transform($css, $file['name']);
-            }else{
+
+        if (ExternalProcessorRegistry::typeIsSupported($file['type'])){
+            $css = ExternalProcessorRegistry::getTransformerForType($file['type'])->transform($css, $file['name']);
+        }else{
+            if ($file['type'] == 'text/x-less'){
+                $less = new lessc();
+                $css = $less->parse($css);
+            }
+            if (in_array($file['type'], array('text/x-scss', 'text/x-sass'))){
                 $config = array(
                     'cache' => false, // no need. WE are the cache!
                     'debug_info' => $debug,
@@ -364,6 +364,7 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
                 $css = $sass->toCss($css, false); // isFile?
             }
         }
+
         if ($debug){
             fwrite($fh, $css);
         }else{

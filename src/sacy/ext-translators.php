@@ -116,6 +116,20 @@ class ProcessorScss extends ProcessorSass{
     }
 }
 
+class ProcessorLess extends ExternalProcessor{
+    protected function getCommandLine($filename){
+        if (!is_executable(SACY_TRANSFORMER_LESS)){
+            throw new Exception('SACY_TRANSFORMER_LESS defined but not executable');
+        }
+        return sprintf(
+            '%s -I%s -',
+            SACY_TRANSFORMER_LESS,
+            escapeshellarg(dirname($filename))
+        );
+    }
+}
+
+
 
 if (defined('SACY_COMPRESSOR_UGLIFY')){
     ExternalProcessorRegistry::registerCompressor('text/javascript', 'ProcessorUglify');
@@ -128,4 +142,8 @@ if (defined('SACY_TRANSFORMER_COFFEE')){
 if (defined('SACY_TRANSFORMER_SASS')){
     ExternalProcessorRegistry::registerTransformer('text/x-sass', 'ProcessorSass');
     ExternalProcessorRegistry::registerTransformer('text/x-scss', 'ProcessorScss');
+}
+
+if (defined('SACY_TRANSFORMER_LESS')){
+    ExternalProcessorRegistry::registerTransformer('text/x-less', 'ProcessorLess');
 }
