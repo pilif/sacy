@@ -290,14 +290,14 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
         }
         if ($file['type'] == 'text/coffeescript'){
             $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
-                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js) :
+                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $file['name']) :
                 Coffeescript\compile($js);
         }
         if ($debug){
             fwrite($fh, $js);
         }else{
             fwrite($fh, ExternalProcessorRegistry::typeIsSupported('text/javascript') ?
-                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js) :
+                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js, $file['name']) :
                 JSMin::minify($js)
             );
         }

@@ -1,15 +1,15 @@
 <?php
 
 abstract class ExternalProcessor{
-    abstract protected function getCommandLine();
+    abstract protected function getCommandLine($filename);
 
-    function transform($in){
+    function transform($in, $filename){
         $s = array(
             0 => array('pipe', 'r'),
             1 => array('pipe', 'w'),
             2 => array('pipe', 'w')
         );
-        $cmd = $this->getCommandLine();
+        $cmd = $this->getCommandLine($filename);
         $p = proc_open($cmd, $s, $pipes);
         if (!is_resource($p))
             throw new Exception("Failed to execute $cmd");
@@ -74,7 +74,7 @@ class ExternalProcessorRegistry{
 }
 
 class ProcessorUglify extends ExternalProcessor{
-    protected function getCommandLine(){
+    protected function getCommandLine($filename){
         if (!is_executable(SACY_COMPRESSOR_UGLIFY)){
             throw new Exception('SACY_COMPRESSOR_UGLIFY defined but not executable');
         }
@@ -83,7 +83,7 @@ class ProcessorUglify extends ExternalProcessor{
 }
 
 class ProcessorCoffee extends ExternalProcessor{
-    protected function getCommandLine(){
+    protected function getCommandLine($filename){
         if (!is_executable(SACY_TRANSFORMER_COFFEE)){
             throw new Exception('SACY_TRANSFORMER_COFFEE defined but not executable');
         }
