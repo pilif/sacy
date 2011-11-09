@@ -411,6 +411,17 @@ function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
     }
 
     if (!sacy_write_cache($smarty, $cfile, $files, $rh)){
+        /* If something went wrong in here we delete the cache file
+
+           This ensures that on reload, sacy would see that no cached file exists and
+           will retry the process.
+
+           This is helpful for example if you define() one of the external utilities
+           and screw something up in the process.
+        */
+        if (file_exists($cfile)){
+            @unlink($cfile);
+        }
         return false;
     }
 
@@ -421,12 +432,12 @@ function sacy_write_cache(&$smarty, $cfile, $files, sacy_CacheRenderHandler $rh)
     $lockfile = $cfile.".lock";
     $fhl = @fopen($lockfile, 'w');
     if (!$fhl){
-        $smarty->trigger_error("Cannot create cache-lockfile: $lockfile");
+        trigger_error("Cannot create cache-lockfile: $lockfile", E_USER_WARNING);
         return false;
     }
     $wb = false;
     if (!@flock($fhl, LOCK_EX | LOCK_NB, $wb)){
-        $smarty->trigger_error("Canot lock cache-lockfile: $lockfile");
+        trigger_error("Canot lock cache-lockfile: $lockfile", E_USER_WARNING);
         return false;
     }
     if ($wb){
@@ -436,20 +447,33 @@ function sacy_write_cache(&$smarty, $cfile, $files, sacy_CacheRenderHandler $rh)
     }
     $fhc = @fopen($cfile, 'w');
     if (!$fhc){
-        $smarty->trigger_error("Cannot open cache file: $cfile");
+        trigger_error("Cannot open cache file: $cfile", E_USER_WARNING);
         fclose($fhl);
         unlink($lockfile);
         return false;
     }
+
     if ($rh->getConfig()->get('write_headers'))
         $rh->writeHeader($fhc, $files);
 
+    $res = true;
     foreach($files as $file){
-        $rh->processFile($fhc, $file);
+        try{
+            $rh->processFile($fhc, $file);
+        }catch(Exception $e){
+            trigger_error(sprintf(
+                "Exception %s while processing %s:\n\n%s",
+                get_class($e),
+                $file['name'],
+                $e->getMessage()
+            ), E_USER_WARNING);
+            $res = false;
+            break;
+        }
     }
 
     fclose($fhc);
     fclose($fhl);
     unlink($lockfile);
-    return true;
+    return $res;
 }
