@@ -1,4 +1,6 @@
 Version 0.3 (2011-12-??):
+ - Use debug mode as part of the generated hash
+ - Translate CSS url()'s with debug_mode = 3
  - Patch phamlp to correctly support @import
  - Support for external tools for transforming/minimizing
  - Support for uglyfier.js
