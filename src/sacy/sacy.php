@@ -408,7 +408,7 @@ function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
         $max = max($max, filemtime($f['name']));
     }
     // not using the actual content for quicker access
-    $key = md5($max . serialize($files));
+    $key = md5($max . serialize($files) . $rh->getConfig()->getDebugMode());
     $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
     $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
 
