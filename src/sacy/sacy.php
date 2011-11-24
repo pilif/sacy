@@ -367,7 +367,12 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
         }
 
         if ($debug){
-            fwrite($fh, $css);
+            fwrite($fh, Minify_CSS_UriRewriter::rewrite(
+                $css,
+                dirname($file['name']),
+                $_SERVER['DOCUMENT_ROOT'],
+                array()
+            ));
         }else{
             fwrite($fh, Minify_CSS::minify($css, array(
                 'currentDir' => dirname($file['name'])
