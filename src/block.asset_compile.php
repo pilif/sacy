@@ -59,12 +59,16 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             $files[] = $r;
         }
 
+        if (!$files)
+            return '';
+
         $renderer = new sacy_CacheRenderer($cfg, $smarty);
         $patched_content = $content;
 
         $render = array();
         $curr_cat = $files[0]['group'].$files[0]['tag'];
 
+        $entry = null;
         foreach($files as $i => $entry){
             $cg = $entry['group'].$entry['tag'];
 
