@@ -59,9 +59,6 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             $files[] = $r;
         }
 
-        if (!$files)
-            return '';
-
         $renderer = new sacy_CacheRenderer($cfg, $smarty);
         $patched_content = $content;
 
@@ -101,10 +98,12 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             }
         }
         $render_order = array_reverse($render);
-        $res = $renderer->renderFiles($entry['tag'], $entry['group'], $render_order);
-        if ($res === false){
-            // see last comment
-            return $content;
+        if ($files){
+            $res = $renderer->renderFiles($entry['tag'], $entry['group'], $render_order);
+            if ($res === false){
+                // see last comment
+                return $content;
+            }
         }
         $m = null;
         foreach($render as $r){
