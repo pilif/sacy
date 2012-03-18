@@ -1,7 +1,7 @@
 <?php
 
 if (!defined("____SACY_BUNDLED"))
-    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'external-translators.php')));
+    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'ext-translators.php')));
 
 if (!class_exists('JSMin') && !ExternalProcessorRegistry::typeIsSupported('text/javascript'))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'jsmin.php')));
