@@ -16,12 +16,16 @@ if (!class_exists('lessc') && !ExternalProcessorRegistry::typeIsSupported('text/
     }
 }
 
-if (!function_exists('CoffeeScript\compile') && !ExternalProcessorRegistry::typeIsSupported('text/coffeescript')){
+if(function_exists('CoffeeScript\compile')){
+    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'coffeescript.php')));
+} else if (!ExternalProcessorRegistry::typeIsSupported('text/coffeescript')){
     $coffee = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), '..', 'coffeescript', 'coffeescript.php'));
     if (file_exists($coffee)){
         include_once($coffee);
+        include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'coffeescript.php')));
     }
 }
+
 
 if (!class_exists('SassParser') && !ExternalProcessorRegistry::typeIsSupported('text/x-sass')){
     $sass = implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), '..', 'sass', 'SassParser.php'));
@@ -263,7 +267,7 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
 
     static function willTransformType($type){
         // transforming everything but plain old CSS
-        return in_array($type, static::supportedTransformations());
+        return in_array($type, self::supportedTransformations());
     }
 
     function getFileExtension() { return '.js'; }
@@ -291,7 +295,7 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
         if ($file['type'] == 'text/coffeescript'){
             $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
                 ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $file['name']) :
-                Coffeescript\compile($js);
+                Coffeescript::build($js);
         }
         if ($debug){
             fwrite($fh, $js);
