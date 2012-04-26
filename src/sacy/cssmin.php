@@ -1,4 +1,4 @@
-<?
+<?php
 /* Taken from minify by Ryan Grove and Steve Clay and distributed
    under the following license:
    
