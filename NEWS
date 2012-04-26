@@ -1,3 +1,9 @@
+Version 0.3.1 (2012-04-26):
+ - Restore 5.2 compatibility (thanks @snaxor)
+
+This is going to be the last version of sacy compatible
+with PHP 5.2 (which is out of support by now)
+
 Version 0.3 (2012-02-11):
  - Stop blowing up if there is nothing to do (issue #5)
  - Use debug mode as part of the generated hash
