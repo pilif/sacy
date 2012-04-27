@@ -220,7 +220,7 @@ class sacy_CacheRenderer {
         $this->_cfg = $config;
     }
 
-    function renderFiles($tag, $cat, $files){
+    function renderWorkUnits($tag, $cat, $files){
         switch($tag){
             case 'link':
                 $fn = 'render_css_files';
@@ -250,7 +250,7 @@ class sacy_CacheRenderer {
         return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($ref, ENT_QUOTES));
     }
 
-    private function generate_cache($files, sacy_CacheRenderHandler $rh){
+    private function generate_cache($work_units, sacy_CacheRenderHandler $rh){
         if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
             mkdir(ASSET_COMPILE_OUTPUT_DIR);
 
@@ -258,16 +258,16 @@ class sacy_CacheRenderer {
             return basename($f["file"], "'.$rh->getFileExtension().'");
         };
 
-        $ident = implode('-', array_map($f, $files));
+        $ident = implode('-', array_map($f, $work_units));
         if (strlen($ident) > 120)
             $ident = 'many-files-'.md5($ident);
         $max = 0;
-        foreach($files as $f){
+        foreach($work_units as $f){
             $max = max($max, filemtime($f['file']));
         }
 
         // not using the actual content for quicker access
-        $key = md5($max . serialize($files) . $rh->getConfig()->getDebugMode());
+        $key = md5($max . serialize($work_units) . $rh->getConfig()->getDebugMode());
         $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
         $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
 
@@ -275,7 +275,7 @@ class sacy_CacheRenderer {
             return $pub;
         }
 
-        if (!$this->write_cache($cfile, $files, $rh)){
+        if (!$this->write_cache($cfile, $work_units, $rh)){
             /* If something went wrong in here we delete the cache file
 
                This ensures that on reload, sacy would see that no cached file exists and

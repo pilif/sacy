@@ -73,7 +73,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             // together.
             if ($curr_cat != $cg || ($cfg->getDebugMode() == 3 && count($render))){
                 $render_order = array_reverse($render);
-                $res = $renderer->renderFiles($work_units[$i-1]['tag'], $work_units[$i-1]['group'], $render_order);
+                $res = $renderer->renderWorkUnits($work_units[$i-1]['tag'], $work_units[$i-1]['group'], $render_order);
                 if ($res === false){
                     // rendering failed.
                     // because we don't know which one, we just enter emergency mode
@@ -98,7 +98,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         }
         $render_order = array_reverse($render);
         if ($work_units){
-            $res = $renderer->renderFiles($entry['tag'], $entry['group'], $render_order);
+            $res = $renderer->renderWorkUnits($entry['tag'], $entry['group'], $render_order);
             if ($res === false){
                 // see last comment
                 return $content;
