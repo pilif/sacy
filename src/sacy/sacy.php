@@ -129,7 +129,7 @@ class sacy_WorkUnitExtractor{
 
             return array(
                 'group' => $attrs['media'],
-                'name' => $path,
+                'file' => $path,
                 'type' => $attrs['type']
             );
         }
@@ -161,7 +161,7 @@ class sacy_WorkUnitExtractor{
             if ($path === false) return false;
             return array(
                 'group' => '',
-                'name' => $path,
+                'file' => $path,
                 'type' => $attrs['type']
             );
         }
@@ -302,7 +302,7 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy javascript cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($files as $file){
-            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
+            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -311,23 +311,23 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
         $debug = $this->getConfig()->getDebugMode() == 3;
 
         if ($this->getConfig()->get('write_headers'))
-            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
-        $js = @file_get_contents($file['name']);
+            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
+        $js = @file_get_contents($file['file']);
         if ($js == false){
             fwrite($fh, "/* <Error accessing file> */\n");
-            $this->getSmarty()->trigger_error("Error accessing JavaScript-File: ".$file['name']);
+            $this->getSmarty()->trigger_error("Error accessing JavaScript-File: ".$file['file']);
             return;
         }
         if ($file['type'] == 'text/coffeescript'){
             $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
-                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $file['name']) :
+                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $file['file']) :
                 Coffeescript::build($js);
         }
         if ($debug){
             fwrite($fh, $js);
         }else{
             fwrite($fh, ExternalProcessorRegistry::typeIsSupported('text/javascript') ?
-                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js, $file['name']) :
+                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js, $file['file']) :
                 JSMin::minify($js)
             );
         }
@@ -357,7 +357,7 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy css cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($files as $file){
-            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
+            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -365,20 +365,20 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
     function processFile($fh, $file){
         $debug = $this->getConfig()->getDebugMode() == 3;
         if ($this->getConfig()->get('write_headers'))
-           fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['name']));
-        $css = @file_get_contents($file['name']); //maybe stream this later to save memory?
+           fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
+        $css = @file_get_contents($file['file']); //maybe stream this later to save memory?
         if ($css == false){
             fwrite($fh, "/* <Error accessing file> */\n");
-            $this->getSmarty()->trigger_error("Error accessing CSS-File: ".$file['name']);
+            $this->getSmarty()->trigger_error("Error accessing CSS-File: ".$file['file']);
             return;
         }
 
         if (ExternalProcessorRegistry::typeIsSupported($file['type'])){
-            $css = ExternalProcessorRegistry::getTransformerForType($file['type'])->transform($css, $file['name']);
+            $css = ExternalProcessorRegistry::getTransformerForType($file['type'])->transform($css, $file['file']);
         }else{
             if ($file['type'] == 'text/x-less'){
                 $less = new lessc();
-                $less->importDir = dirname($file['name']).'/'; #lessphp concatenates without a /
+                $less->importDir = dirname($file['file']).'/'; #lessphp concatenates without a /
                 $css = $less->parse($css);
             }
             if (in_array($file['type'], array('text/x-scss', 'text/x-sass'))){
@@ -386,8 +386,8 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
                     'cache' => false, // no need. WE are the cache!
                     'debug_info' => $debug,
                     'line' => $debug,
-                    'load_paths' => array(dirname($file['name'])),
-                    'filename' => $file['name'],
+                    'load_paths' => array(dirname($file['file'])),
+                    'filename' => $file['file'],
                     'quiet' => true,
                     'style' => $debug ? 'nested' : 'compressed'
                 );
@@ -399,13 +399,13 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
         if ($debug){
             fwrite($fh, Minify_CSS_UriRewriter::rewrite(
                 $css,
-                dirname($file['name']),
+                dirname($file['file']),
                 $_SERVER['DOCUMENT_ROOT'],
                 array()
             ));
         }else{
             fwrite($fh, Minify_CSS::minify($css, array(
-                'currentDir' => dirname($file['name'])
+                'currentDir' => dirname($file['file'])
             )));
         }
     }
@@ -418,7 +418,7 @@ function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
         mkdir(ASSET_COMPILE_OUTPUT_DIR);
 
     $f = function($f) use ($rh){
-        return basename($f["name"], "'.$rh->getFileExtension().'");
+        return basename($f["file"], "'.$rh->getFileExtension().'");
     };
 
     $ident = implode('-', array_map($f, $files));
@@ -426,8 +426,9 @@ function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
         $ident = 'many-files-'.md5($ident);
     $max = 0;
     foreach($files as $f){
-        $max = max($max, filemtime($f['name']));
+        $max = max($max, filemtime($f['file']));
     }
+
     // not using the actual content for quicker access
     $key = md5($max . serialize($files) . $rh->getConfig()->getDebugMode());
     $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
@@ -491,7 +492,7 @@ function sacy_write_cache(&$smarty, $cfile, $files, sacy_CacheRenderHandler $rh)
             trigger_error(sprintf(
                 "Exception %s while processing %s:\n\n%s",
                 get_class($e),
-                $file['name'],
+                $file['file'],
                 $e->getMessage()
             ), E_USER_WARNING);
             $res = false;
