@@ -1,3 +1,6 @@
+Version 0.4 (2012-??-??):
+ - Require PHP 5.3
+
 Version 0.3.1 (2012-04-26):
  - Restore 5.2 compatibility (thanks @snaxor)
 

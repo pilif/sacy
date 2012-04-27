@@ -403,7 +403,10 @@ function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
     if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
         mkdir(ASSET_COMPILE_OUTPUT_DIR);
 
-    $f = create_function('$f', 'return basename($f["name"], "'.$rh->getFileExtension().'");');
+    $f = function($f) use ($rh){
+        return basename($f["name"], "'.$rh->getFileExtension().'");
+    };
+
     $ident = implode('-', array_map($f, $files));
     if (strlen($ident) > 120)
         $ident = 'many-files-'.md5($ident);

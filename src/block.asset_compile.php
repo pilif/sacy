@@ -41,8 +41,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         }
 
         // now sort task list by descending location offset
-        // by the way: I want widespread 5.3 adoption for anonymous functions
-        usort($work, create_function('$a,$b', 'if ($a[2] == $b[2]) return 0; return ($a[2] < $b[2]) ? 1 : -1;'));
+        usort($work, function($a, $b){ if ($a[2] == $b[2]) return 0; return ($a[2] < $b[2]) ? 1 : -1;});
         $ex = new sacy_FileExtractor($cfg);
         $files = array();
 
