@@ -47,13 +47,29 @@ class sacy_FileExtractor{
         $this->_cfg = $config;
     }
 
-    function extractFile($tag, $attrdata, $content){
+    function getAcceptedWorkUnits($tags){
+        $work_units = array();
+        foreach($tags as $tag){
+            $r = $this->workUnitFromTag($tag['tag'], $tag['attrdata'], $tag['content']);
+            if ($r === false) continue; // handler has declined
+            $r = array_merge($r, array(
+                'page_order' => $tag['page_order'],
+                'position' => $tag['index'],
+                'length' => strlen($tag['tagdata']),
+                'tag' => $tag['tag']
+            ));
+            $work_units[] = $r;
+        }
+        return $work_units;
+    }
+
+    function workUnitFromTag($tag, $attrdata, $content){
         switch($tag){
             case 'link':
-                $fn = 'extract_css_file';
+                $fn = 'extract_css_unit';
                 break;
             case 'script':
-                $fn = 'extract_js_file';
+                $fn = 'extract_js_unit';
                 break;
             default: throw new sacy_Exception("Cannot handle tag: $tag");
         }
@@ -79,7 +95,7 @@ class sacy_FileExtractor{
     }
 
 
-    private function extract_css_file($attrdata, $content){
+    private function extract_css_unit($attrdata, $content){
         // if any of these conditions are met, this handler will decline
         // handling the tag:
         //
@@ -118,7 +134,7 @@ class sacy_FileExtractor{
         ) && !empty($attrs['src']);
     }
 
-    private function extract_js_file($attrdata, $content){
+    private function extract_js_unit($attrdata, $content){
         // don't handle non-empty tags
         if (preg_match('#\S+#', $content)) return false;
 

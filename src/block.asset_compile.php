@@ -21,9 +21,9 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             return $content;
         }
 
-        $tags = array('link', 'script');
         $tag_pattern = '#\s*<\s*T\s+(.*)\s*(?:/>|>(.*)</T>)\s*#Uim';
-        $work = array();
+        $tags = array();
+
         $aindex = 0;
 
         // first assembling all work. The idea is that, if sorted by descending
@@ -31,11 +31,11 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         //
         // We'll need that to conditionally handle tags (like jTemplate's
         // <script type="text/html" that should remain)
-        foreach($tags as $tag){
+        foreach(array('link', 'script') as $tag){
             $p = str_replace('T', preg_quote($tag), $tag_pattern);
             if(preg_match_all($p, $content, $ms, PREG_OFFSET_CAPTURE)){
                 foreach($ms[1] as $i => $m){
-                    $work[] = array(
+                    $tags[] = array(
                         'tag' => $tag,
                         'attrdata' => $m[0],
                         'index' => $ms[0][$i][1],
@@ -48,34 +48,21 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         }
 
         // now sort task list by descending location offset
-        usort($work, function($a, $b){
+        usort($tags, function($a, $b){
             if ($a['index'] == $b['index']) return 0;
             return ($a['index'] < $b['index']) ? 1 : -1;
         });
         $ex = new sacy_FileExtractor($cfg);
-        $files = array();
-
-        foreach($work as $unit){
-            $r = $ex->extractFile($unit['tag'], $unit['attrdata'], $unit['content']);
-            if ($r === false) continue; // handler has declined
-            $r = array_merge($r, array(
-                'page_order' => $unit['page_order'],
-                'position' => $unit['index'],
-                'length' => strlen($unit['tagdata']),
-                'tag' => $unit['tag']
-            ));
-            $r[] = $unit['tag'];
-            $files[] = $r;
-        }
+        $work_units = $ex->getAcceptedWorkUnits($tags);
 
         $renderer = new sacy_CacheRenderer($cfg, $smarty);
         $patched_content = $content;
 
         $render = array();
-        $curr_cat = $files[0]['group'].$files[0]['tag'];
+        $curr_cat = $work_units[0]['group'].$work_units[0]['tag'];
 
         $entry = null;
-        foreach($files as $i => $entry){
+        foreach($work_units as $i => $entry){
             $cg = $entry['group'].$entry['tag'];
 
             // the moment the category changes, render all we have so far
@@ -83,7 +70,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             // together.
             if ($curr_cat != $cg || ($cfg->getDebugMode() == 3 && count($render))){
                 $render_order = array_reverse($render);
-                $res = $renderer->renderFiles($files[$i-1]['tag'], $files[$i-1]['group'], $render_order);
+                $res = $renderer->renderFiles($work_units[$i-1]['tag'], $work_units[$i-1]['group'], $render_order);
                 if ($res === false){
                     // rendering failed.
                     // because we don't know which one, we just enter emergency mode
@@ -107,7 +94,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             }
         }
         $render_order = array_reverse($render);
-        if ($files){
+        if ($work_units){
             $res = $renderer->renderFiles($entry['tag'], $entry['group'], $render_order);
             if ($res === false){
                 // see last comment
