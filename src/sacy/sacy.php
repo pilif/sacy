@@ -214,11 +214,9 @@ class sacy_Config{
 }
 
 class sacy_CacheRenderer {
-    private $_smarty;
     private $_cfg;
 
-    function __construct(sacy_Config $config, $smarty){
-        $this->_smarty = $smarty;
+    function __construct(sacy_Config $config){
         $this->_cfg = $config;
     }
 
@@ -237,7 +235,7 @@ class sacy_CacheRenderer {
 
 
     private function render_css_files($files, $cat){
-        $ref = sacy_generate_cache($this->_smarty, $files, new sacy_CssRenderHandler($this->_cfg, $this->_smarty));
+        $ref = $this->generate_cache($files, new sacy_CssRenderHandler($this->_cfg));
         if (!$ref) return false;
         $cs = $cat ? sprintf(' media="%s"', htmlspecialchars($cat, ENT_QUOTES)) : '';
         return sprintf('<link rel="stylesheet" type="text/css"%s href="%s" />'."\n",
@@ -247,14 +245,108 @@ class sacy_CacheRenderer {
     }
 
     private function render_js_files($files, $cat){
-        $ref = sacy_generate_cache($this->_smarty, $files, new sacy_JavascriptRenderHandler($this->_cfg, $this->_smarty));
+        $ref = $this->generate_cache($files, new sacy_JavascriptRenderHandler($this->_cfg));
         if (!$ref) return false;
         return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($ref, ENT_QUOTES));
     }
+
+    private function generate_cache($files, sacy_CacheRenderHandler $rh){
+        if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
+            mkdir(ASSET_COMPILE_OUTPUT_DIR);
+
+        $f = function($f) use ($rh){
+            return basename($f["file"], "'.$rh->getFileExtension().'");
+        };
+
+        $ident = implode('-', array_map($f, $files));
+        if (strlen($ident) > 120)
+            $ident = 'many-files-'.md5($ident);
+        $max = 0;
+        foreach($files as $f){
+            $max = max($max, filemtime($f['file']));
+        }
+
+        // not using the actual content for quicker access
+        $key = md5($max . serialize($files) . $rh->getConfig()->getDebugMode());
+        $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
+        $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
+
+        if (file_exists($cfile) && ($rh->getConfig()->getDebugMode() != 2)){
+            return $pub;
+        }
+
+        if (!$this->write_cache($cfile, $files, $rh)){
+            /* If something went wrong in here we delete the cache file
+
+               This ensures that on reload, sacy would see that no cached file exists and
+               will retry the process.
+
+               This is helpful for example if you define() one of the external utilities
+               and screw something up in the process.
+            */
+            if (file_exists($cfile)){
+                @unlink($cfile);
+            }
+            return false;
+        }
+
+        return $pub;
+    }
+
+    private function write_cache($cfile, $files, sacy_CacheRenderHandler $rh){
+        $lockfile = $cfile.".lock";
+        $fhl = @fopen($lockfile, 'w');
+        if (!$fhl){
+            trigger_error("Cannot create cache-lockfile: $lockfile", E_USER_WARNING);
+            return false;
+        }
+        $wb = false;
+        if (!@flock($fhl, LOCK_EX | LOCK_NB, $wb)){
+            trigger_error("Canot lock cache-lockfile: $lockfile", E_USER_WARNING);
+            return false;
+        }
+        if ($wb){
+            // another process is writing the cache. Let's just return false
+            // the caller will leave the CSS unaltered
+            return false;
+        }
+        $fhc = @fopen($cfile, 'w');
+        if (!$fhc){
+            trigger_error("Cannot open cache file: $cfile", E_USER_WARNING);
+            fclose($fhl);
+            unlink($lockfile);
+            return false;
+        }
+
+        if ($rh->getConfig()->get('write_headers'))
+            $rh->writeHeader($fhc, $files);
+
+        $res = true;
+        foreach($files as $file){
+            try{
+                $rh->processFile($fhc, $file);
+            }catch(Exception $e){
+                trigger_error(sprintf(
+                    "Exception %s while processing %s:\n\n%s",
+                    get_class($e),
+                    $file['file'],
+                    $e->getMessage()
+                ), E_USER_WARNING);
+                $res = false;
+                break;
+            }
+        }
+
+        fclose($fhc);
+        fclose($fhl);
+        unlink($lockfile);
+        return $res;
+    }
+
 }
 
 interface sacy_CacheRenderHandler{
-    function __construct(sacy_Config $cfg, $smarty);
+    function __construct(sacy_Config $cfg);
     function getFileExtension();
     static function willTransformType($type);
     function writeHeader($fh, $files);
@@ -263,16 +355,10 @@ interface sacy_CacheRenderHandler{
 }
 
 abstract class sacy_ConfiguredRenderHandler implements sacy_CacheRenderHandler{
-    private $_smarty;
     private $_cfg;
 
-    function __construct(sacy_Config $cfg, $smarty){
-        $this->_smarty = $smarty;
+    function __construct(sacy_Config $cfg){
         $this->_cfg = $cfg;
-    }
-
-    protected function getSmarty(){
-        return $this->_smarty;
     }
 
     public function getConfig(){
@@ -315,7 +401,6 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
         $js = @file_get_contents($file['file']);
         if ($js == false){
             fwrite($fh, "/* <Error accessing file> */\n");
-            $this->getSmarty()->trigger_error("Error accessing JavaScript-File: ".$file['file']);
             return;
         }
         if ($file['type'] == 'text/coffeescript'){
@@ -369,7 +454,6 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
         $css = @file_get_contents($file['file']); //maybe stream this later to save memory?
         if ($css == false){
             fwrite($fh, "/* <Error accessing file> */\n");
-            $this->getSmarty()->trigger_error("Error accessing CSS-File: ".$file['file']);
             return;
         }
 
@@ -412,96 +496,3 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
 }
 
 class sacy_Exception extends Exception {}
-
-function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
-    if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
-        mkdir(ASSET_COMPILE_OUTPUT_DIR);
-
-    $f = function($f) use ($rh){
-        return basename($f["file"], "'.$rh->getFileExtension().'");
-    };
-
-    $ident = implode('-', array_map($f, $files));
-    if (strlen($ident) > 120)
-        $ident = 'many-files-'.md5($ident);
-    $max = 0;
-    foreach($files as $f){
-        $max = max($max, filemtime($f['file']));
-    }
-
-    // not using the actual content for quicker access
-    $key = md5($max . serialize($files) . $rh->getConfig()->getDebugMode());
-    $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
-    $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
-
-    if (file_exists($cfile) && ($rh->getConfig()->getDebugMode() != 2)){
-        return $pub;
-    }
-
-    if (!sacy_write_cache($smarty, $cfile, $files, $rh)){
-        /* If something went wrong in here we delete the cache file
-
-           This ensures that on reload, sacy would see that no cached file exists and
-           will retry the process.
-
-           This is helpful for example if you define() one of the external utilities
-           and screw something up in the process.
-        */
-        if (file_exists($cfile)){
-            @unlink($cfile);
-        }
-        return false;
-    }
-
-    return $pub;
-}
-
-function sacy_write_cache(&$smarty, $cfile, $files, sacy_CacheRenderHandler $rh){
-    $lockfile = $cfile.".lock";
-    $fhl = @fopen($lockfile, 'w');
-    if (!$fhl){
-        trigger_error("Cannot create cache-lockfile: $lockfile", E_USER_WARNING);
-        return false;
-    }
-    $wb = false;
-    if (!@flock($fhl, LOCK_EX | LOCK_NB, $wb)){
-        trigger_error("Canot lock cache-lockfile: $lockfile", E_USER_WARNING);
-        return false;
-    }
-    if ($wb){
-        // another process is writing the cache. Let's just return false
-        // the caller will leave the CSS unaltered
-        return false;
-    }
-    $fhc = @fopen($cfile, 'w');
-    if (!$fhc){
-        trigger_error("Cannot open cache file: $cfile", E_USER_WARNING);
-        fclose($fhl);
-        unlink($lockfile);
-        return false;
-    }
-
-    if ($rh->getConfig()->get('write_headers'))
-        $rh->writeHeader($fhc, $files);
-
-    $res = true;
-    foreach($files as $file){
-        try{
-            $rh->processFile($fhc, $file);
-        }catch(Exception $e){
-            trigger_error(sprintf(
-                "Exception %s while processing %s:\n\n%s",
-                get_class($e),
-                $file['file'],
-                $e->getMessage()
-            ), E_USER_WARNING);
-            $res = false;
-            break;
-        }
-    }
-
-    fclose($fhc);
-    fclose($fhl);
-    unlink($lockfile);
-    return $res;
-}

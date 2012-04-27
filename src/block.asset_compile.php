@@ -55,7 +55,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         $ex = new sacy_WorkUnitExtractor($cfg);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
-        $renderer = new sacy_CacheRenderer($cfg, $smarty);
+        $renderer = new sacy_CacheRenderer($cfg);
         $patched_content = $content;
 
         $render = array();
