@@ -40,7 +40,7 @@ if (!class_exists('SassParser') && !ExternalProcessorRegistry::typeIsSupported('
  *   to be much too complex if we just need to support two tags
  *   for two types of resources.
  */
-class sacy_FileExtractor{
+class sacy_WorkUnitExtractor{
     private $_cfg;
 
     function __construct(sacy_Config $config){

@@ -52,7 +52,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             if ($a['index'] == $b['index']) return 0;
             return ($a['index'] < $b['index']) ? 1 : -1;
         });
-        $ex = new sacy_FileExtractor($cfg);
+        $ex = new sacy_WorkUnitExtractor($cfg);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
         $renderer = new sacy_CacheRenderer($cfg, $smarty);
