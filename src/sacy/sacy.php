@@ -76,6 +76,16 @@ class sacy_FileExtractor{
         return $this->$fn($attrdata, $content);
     }
 
+    private function extract_attrs($attstr){
+        $attextract = '#([a-z]+)\s*=\s*(["\'])\s*(.*?)\s*\2#';
+        if (!preg_match_all($attextract, $attstr, $m)) return false;
+        $res = array();
+        foreach($m[1] as $idx => $name){
+            $res[strtolower($name)] = $m[3][$idx];
+        }
+        return $res;
+    }
+
     private function urlToFile($ref){
         $u = parse_url($ref);
         if ($u === false) return false;
@@ -102,7 +112,7 @@ class sacy_FileExtractor{
         //  - the tag contains content (invalid markup)
         //  - the tag uses any rel beside 'stylesheet' (valid, but not supported)
         //  - the tag uses a not-supported type (
-        $attrs = sacy_extract_attrs($attrdata);
+        $attrs = $this->extract_attrs($attrdata);
         $attrs['type'] = strtolower($attrs['type']);
         if ($this->_cfg->getDebugMode() == 3 &&
                 !sacy_CssRenderHandler::willTransformType($attrs['type']))
@@ -138,7 +148,7 @@ class sacy_FileExtractor{
         // don't handle non-empty tags
         if (preg_match('#\S+#', $content)) return false;
 
-        $attrs = sacy_extract_attrs($attrdata);
+        $attrs = $this->extract_attrs($attrdata);
         $attrs['type'] = strtolower($attrs['type']);
         if ($this->_cfg->getDebugMode() == 3 &&
                 !sacy_JavaScriptRenderHandler::willTransformType($attrs['type'])){
@@ -402,18 +412,6 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
 }
 
 class sacy_Exception extends Exception {}
-
-function sacy_extract_attrs($attstr){
-    $attextract = '#([a-z]+)\s*=\s*(["\'])\s*(.*?)\s*\2#';
-    $res = array();
-    if (!preg_match_all($attextract, $attstr, $m)) return false;
-    $res = array();
-    foreach($m[1] as $idx => $name){
-        $res[strtolower($name)] = $m[3][$idx];
-    }
-    return $res;
-
-}
 
 function sacy_generate_cache(&$smarty, $files, sacy_CacheRenderHandler $rh){
     if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
