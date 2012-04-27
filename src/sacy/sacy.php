@@ -178,7 +178,7 @@ class sacy_Config{
     }
 
     public function __construct($params = null){
-        $this->params['query_strings'] = defined('SACY_QUERY_STINGS') ? SACY_QUERY_STRINGS : 'ignore';
+        $this->params['query_strings'] = defined('SACY_QUERY_STRINGS') ? SACY_QUERY_STRINGS : 'ignore';
         $this->params['write_headers'] = defined('SACY_WRITE_HEADERS') ? SACY_WRITE_HEADERS : true;
         $this->params['debug_toggle']  = defined('SACY_DEBUG_TOGGLE') ? SACY_DEBUG_TOGGLE : '_sacy_debug';
 
