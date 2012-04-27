@@ -59,11 +59,14 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         $patched_content = $content;
 
         $render = array();
-        $curr_cat = $work_units[0]['group'].$work_units[0]['tag'];
+        $category = function($work_unit){
+            return implode('', array($work_unit['group'], $work_unit['tag'], !!$work_unit['file']));
+        };
+        $curr_cat = $category($work_units[0]);
 
         $entry = null;
         foreach($work_units as $i => $entry){
-            $cg = $entry['group'].$entry['tag'];
+            $cg = $category($entry);
 
             // the moment the category changes, render all we have so far
             // this makes it IMPERATIVE to keep links of the same category
