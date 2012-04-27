@@ -34,27 +34,37 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         foreach($tags as $tag){
             $p = str_replace('T', preg_quote($tag), $tag_pattern);
             if(preg_match_all($p, $content, $ms, PREG_OFFSET_CAPTURE)){
-                foreach($ms[1] as $i => $m)
-                    $work[] = array($tag, $m[0], $ms[0][$i][1], $ms[0][$i][0], $ms[2][$i][0], $aindex++);
-                                  // tag, attrdata, index in doc, whole tag, content, order of appearance
+                foreach($ms[1] as $i => $m){
+                    $work[] = array(
+                        'tag' => $tag,
+                        'attrdata' => $m[0],
+                        'index' => $ms[0][$i][1],
+                        'tagdata' => $ms[0][$i][0],
+                        'content' => $ms[2][$i][0],
+                        'page_order' => $aindex++
+                    );
+                }
             }
         }
 
         // now sort task list by descending location offset
-        usort($work, function($a, $b){ if ($a[2] == $b[2]) return 0; return ($a[2] < $b[2]) ? 1 : -1;});
+        usort($work, function($a, $b){
+            if ($a['index'] == $b['index']) return 0;
+            return ($a['index'] < $b['index']) ? 1 : -1;
+        });
         $ex = new sacy_FileExtractor($cfg);
         $files = array();
 
         foreach($work as $unit){
-            $r = $ex->extractFile($unit[0], $unit[1], $unit[4]);
+            $r = $ex->extractFile($unit['tag'], $unit['attrdata'], $unit['content']);
             if ($r === false) continue; // handler has declined
             $r = array_merge($r, array(
-                'page_order' => $unit[5],
-                'position' => $unit[2],
-                'length' => strlen($unit[3]),
-                'tag' => $unit[0]
+                'page_order' => $unit['page_order'],
+                'position' => $unit['index'],
+                'length' => strlen($unit['tagdata']),
+                'tag' => $unit['tag']
             ));
-            $r[] = $unit[0];
+            $r[] = $unit['tag'];
             $files[] = $r;
         }
 
