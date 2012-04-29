@@ -4,7 +4,7 @@ if (!defined("____SACY_BUNDLED"))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
 
 if (!(defined("ASSET_COMPILE_OUTPUT_DIR") && defined("ASSET_COMPILE_URL_ROOT"))){
-    throw new sacy_Exception("Failed to initialize because path configuration is not set (ASSET_COMPILE_OUTPUT_DIR and ASSET_COMPILE_URL_ROOT)");
+    throw new sacy\Exception("Failed to initialize because path configuration is not set (ASSET_COMPILE_OUTPUT_DIR and ASSET_COMPILE_URL_ROOT)");
 }
 
 function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
@@ -16,7 +16,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         //
         // So, let's go back to good old regexps :-)
 
-        $cfg = new sacy_Config($params);
+        $cfg = new sacy\Config($params);
         if ($cfg->getDebugMode() == 1 ){
             return $content;
         }
@@ -52,10 +52,10 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             if ($a['index'] == $b['index']) return 0;
             return ($a['index'] < $b['index']) ? 1 : -1;
         });
-        $ex = new sacy_WorkUnitExtractor($cfg);
+        $ex = new sacy\WorkUnitExtractor($cfg);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
-        $renderer = new sacy_CacheRenderer($cfg);
+        $renderer = new sacy\CacheRenderer($cfg);
         $patched_content = $content;
 
         $render = array();

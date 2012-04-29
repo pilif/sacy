@@ -1,4 +1,5 @@
 <?php
+namespace sacy;
 
 abstract class ExternalProcessor{
     abstract protected function getCommandLine($filename);
@@ -12,7 +13,7 @@ abstract class ExternalProcessor{
         $cmd = $this->getCommandLine($filename);
         $p = proc_open($cmd, $s, $pipes);
         if (!is_resource($p))
-            throw new Exception("Failed to execute $cmd");
+            throw new \Exception("Failed to execute $cmd");
 
         fwrite($pipes[0], $in);
         fclose($pipes[0]);
@@ -26,7 +27,7 @@ abstract class ExternalProcessor{
         $r = proc_close($p);
 
         if ($r != 0){
-            throw new Exception("Command returned $r: $err");
+            throw new \Exception("Command returned $r: $err");
         }
         return $out;
     }
@@ -55,7 +56,7 @@ class ExternalProcessorRegistry{
 
     /**
      * @static
-     * @param $type mime type of input
+     * @param $type string mime type of input
      * @return ExternalProcessor
      */
     public static function getTransformerForType($type){
@@ -64,7 +65,7 @@ class ExternalProcessorRegistry{
 
     /**
      * @static
-     * @param $type mime type of input
+     * @param $type string mime type of input
      * @return ExternalProcessor
      */
     public static function getCompressorForType($type){
@@ -119,7 +120,7 @@ class ProcessorScss extends ProcessorSass{
 class ProcessorLess extends ExternalProcessor{
     protected function getCommandLine($filename){
         if (!is_executable(SACY_TRANSFORMER_LESS)){
-            throw new Exception('SACY_TRANSFORMER_LESS defined but not executable');
+            throw new \Exception('SACY_TRANSFORMER_LESS defined but not executable');
         }
         return sprintf(
             '%s -I%s -',
@@ -132,18 +133,18 @@ class ProcessorLess extends ExternalProcessor{
 
 
 if (defined('SACY_COMPRESSOR_UGLIFY')){
-    ExternalProcessorRegistry::registerCompressor('text/javascript', 'ProcessorUglify');
+    ExternalProcessorRegistry::registerCompressor('text/javascript', 'sacy\ProcessorUglify');
 }
 
 if (defined('SACY_TRANSFORMER_COFFEE')){
-    ExternalProcessorRegistry::registerTransformer('text/coffeescript', 'ProcessorCoffee');
+    ExternalProcessorRegistry::registerTransformer('text/coffeescript', 'sacy\ProcessorCoffee');
 }
 
 if (defined('SACY_TRANSFORMER_SASS')){
-    ExternalProcessorRegistry::registerTransformer('text/x-sass', 'ProcessorSass');
-    ExternalProcessorRegistry::registerTransformer('text/x-scss', 'ProcessorScss');
+    ExternalProcessorRegistry::registerTransformer('text/x-sass', 'sacy\ProcessorSass');
+    ExternalProcessorRegistry::registerTransformer('text/x-scss', 'sacy\ProcessorScss');
 }
 
 if (defined('SACY_TRANSFORMER_LESS')){
-    ExternalProcessorRegistry::registerTransformer('text/x-less', 'ProcessorLess');
+    ExternalProcessorRegistry::registerTransformer('text/x-less', 'sacy\ProcessorLess');
 }

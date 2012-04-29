@@ -1,4 +1,5 @@
 <?php
+namespace sacy;
 
 if (!defined("____SACY_BUNDLED"))
     include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'ext-translators.php')));
@@ -40,10 +41,10 @@ if (!class_exists('SassParser') && !ExternalProcessorRegistry::typeIsSupported('
  *   to be much too complex if we just need to support two tags
  *   for two types of resources.
  */
-class sacy_WorkUnitExtractor{
+class WorkUnitExtractor{
     private $_cfg;
 
-    function __construct(sacy_Config $config){
+    function __construct(Config $config){
         $this->_cfg = $config;
     }
 
@@ -71,7 +72,7 @@ class sacy_WorkUnitExtractor{
             case 'script':
                 $fn = 'extract_js_unit';
                 break;
-            default: throw new sacy_Exception("Cannot handle tag: $tag");
+            default: throw new Exception("Cannot handle tag: $tag");
         }
         return $this->$fn($attrdata, $content);
     }
@@ -115,12 +116,12 @@ class sacy_WorkUnitExtractor{
         $attrs = $this->extract_attrs($attrdata);
         $attrs['type'] = strtolower($attrs['type']);
         if ($this->_cfg->getDebugMode() == 3 &&
-                !sacy_CssRenderHandler::willTransformType($attrs['type']))
+                !CssRenderHandler::willTransformType($attrs['type']))
             return false;
 
         if (empty($content) && (strtolower($attrs['rel']) == 'stylesheet') &&
             (!isset($attrs['type']) ||
-            (in_array(strtolower($attrs['type']), sacy_CssRenderHandler::supportedTransformations())))){
+            (in_array(strtolower($attrs['type']), CssRenderHandler::supportedTransformations())))){
             if (!isset($attrs['media']))
                 $attrs['media'] = "";
 
@@ -137,7 +138,7 @@ class sacy_WorkUnitExtractor{
     }
 
     private function validTag($attrs){
-        $types = array_merge(array('text/javascript', 'application/javascript'), sacy_JavascriptRenderHandler::supportedTransformations());
+        $types = array_merge(array('text/javascript', 'application/javascript'), JavaScriptRenderHandler::supportedTransformations());
         return  in_array(
             $attrs['type'],
             $types
@@ -151,7 +152,7 @@ class sacy_WorkUnitExtractor{
         $attrs = $this->extract_attrs($attrdata);
         $attrs['type'] = strtolower($attrs['type']);
         if ($this->_cfg->getDebugMode() == 3 &&
-                !sacy_JavaScriptRenderHandler::willTransformType($attrs['type'])){
+                !JavaScriptRenderHandler::willTransformType($attrs['type'])){
             return false;
         }
 
@@ -170,7 +171,7 @@ class sacy_WorkUnitExtractor{
 
 }
 
-class sacy_Config{
+class Config{
     private $params;
 
     public function get($key){
@@ -200,12 +201,12 @@ class sacy_Config{
     public function setParams($params){
         foreach($params as $key => $value){
             if (!in_array($key, array('query_strings', 'write_headers', 'debug_toggle')))
-                throw new sacy_Exception("Invalid option: $key");
+                throw new Exception("Invalid option: $key");
         }
         if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
-            throw new sacy_Exception("Invalid setting for query_strings: ".$params['query_strings']);
+            throw new Exception("Invalid setting for query_strings: ".$params['query_strings']);
         if (isset($params['write_headers']) && !in_array($params['write_headers'], array(true, false), true))
-            throw new sacy_Exception("Invalid setting for write_headers: ".$params['write_headers']);
+            throw new Exception("Invalid setting for write_headers: ".$params['write_headers']);
 
 
         $this->params = array_merge($this->params, $params);
@@ -213,10 +214,10 @@ class sacy_Config{
 
 }
 
-class sacy_CacheRenderer {
+class CacheRenderer {
     private $_cfg;
 
-    function __construct(sacy_Config $config){
+    function __construct(Config $config){
         $this->_cfg = $config;
     }
 
@@ -228,14 +229,14 @@ class sacy_CacheRenderer {
             case 'script':
                 $fn = 'render_js_files';
                 break;
-            default: throw new sacy_Exception("Cannot handle tag: $tag");
+            default: throw new Exception("Cannot handle tag: $tag");
         }
         return $this->$fn($files, $cat);
     }
 
 
     private function render_css_files($files, $cat){
-        $ref = $this->generate_cache($files, new sacy_CssRenderHandler($this->_cfg));
+        $ref = $this->generate_cache($files, new CssRenderHandler($this->_cfg));
         if (!$ref) return false;
         $cs = $cat ? sprintf(' media="%s"', htmlspecialchars($cat, ENT_QUOTES)) : '';
         return sprintf('<link rel="stylesheet" type="text/css"%s href="%s" />'."\n",
@@ -245,12 +246,12 @@ class sacy_CacheRenderer {
     }
 
     private function render_js_files($files, $cat){
-        $ref = $this->generate_cache($files, new sacy_JavascriptRenderHandler($this->_cfg));
+        $ref = $this->generate_cache($files, new JavaScriptRenderHandler($this->_cfg));
         if (!$ref) return false;
         return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($ref, ENT_QUOTES));
     }
 
-    private function generate_cache($work_units, sacy_CacheRenderHandler $rh){
+    private function generate_cache($work_units, CacheRenderHandler $rh){
         if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
             mkdir(ASSET_COMPILE_OUTPUT_DIR);
 
@@ -293,7 +294,7 @@ class sacy_CacheRenderer {
         return $pub;
     }
 
-    private function write_cache($cfile, $files, sacy_CacheRenderHandler $rh){
+    private function write_cache($cfile, $files, CacheRenderHandler $rh){
         $lockfile = $cfile.".lock";
         $fhl = @fopen($lockfile, 'w');
         if (!$fhl){
@@ -325,7 +326,7 @@ class sacy_CacheRenderer {
         foreach($files as $file){
             try{
                 $rh->processFile($fhc, $file);
-            }catch(Exception $e){
+            }catch(\Exception $e){
                 trigger_error(sprintf(
                     "Exception %s while processing %s:\n\n%s",
                     get_class($e),
@@ -345,8 +346,8 @@ class sacy_CacheRenderer {
 
 }
 
-interface sacy_CacheRenderHandler{
-    function __construct(sacy_Config $cfg);
+interface CacheRenderHandler{
+    function __construct(Config $cfg);
     function getFileExtension();
     static function willTransformType($type);
     function writeHeader($fh, $files);
@@ -354,10 +355,10 @@ interface sacy_CacheRenderHandler{
     function getConfig();
 }
 
-abstract class sacy_ConfiguredRenderHandler implements sacy_CacheRenderHandler{
+abstract class sacy_ConfiguredRenderHandler implements CacheRenderHandler{
     private $_cfg;
 
-    function __construct(sacy_Config $cfg){
+    function __construct(Config $cfg){
         $this->_cfg = $cfg;
     }
 
@@ -370,7 +371,7 @@ abstract class sacy_ConfiguredRenderHandler implements sacy_CacheRenderHandler{
     }
 }
 
-class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
+class JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
     static function supportedTransformations(){
         if (function_exists('CoffeeScript\compile') || ExternalProcessorRegistry::typeIsSupported('text/coffeescript'))
             return array('text/coffeescript');
@@ -406,21 +407,21 @@ class sacy_JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
         if ($file['type'] == 'text/coffeescript'){
             $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
                 ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $file['file']) :
-                Coffeescript::build($js);
+                \Coffeescript::build($js);
         }
         if ($debug){
             fwrite($fh, $js);
         }else{
             fwrite($fh, ExternalProcessorRegistry::typeIsSupported('text/javascript') ?
                 ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js, $file['file']) :
-                JSMin::minify($js)
+                \JSMin::minify($js)
             );
         }
     }
 
 }
 
-class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
+class CssRenderHandler extends sacy_ConfiguredRenderHandler{
     static function supportedTransformations(){
         $res = array('', 'text/css');
         if (class_exists('lessc') || ExternalProcessorRegistry::typeIsSupported('text/x-less'))
@@ -461,7 +462,7 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
             $css = ExternalProcessorRegistry::getTransformerForType($file['type'])->transform($css, $file['file']);
         }else{
             if ($file['type'] == 'text/x-less'){
-                $less = new lessc();
+                $less = new \lessc();
                 $less->importDir = dirname($file['file']).'/'; #lessphp concatenates without a /
                 $css = $less->parse($css);
             }
@@ -475,24 +476,24 @@ class sacy_CssRenderHandler extends sacy_ConfiguredRenderHandler{
                     'quiet' => true,
                     'style' => $debug ? 'nested' : 'compressed'
                 );
-                $sass = new SassParser($config);
+                $sass = new \SassParser($config);
                 $css = $sass->toCss($css, false); // isFile?
             }
         }
 
         if ($debug){
-            fwrite($fh, Minify_CSS_UriRewriter::rewrite(
+            fwrite($fh, \Minify_CSS_UriRewriter::rewrite(
                 $css,
                 dirname($file['file']),
                 $_SERVER['DOCUMENT_ROOT'],
                 array()
             ));
         }else{
-            fwrite($fh, Minify_CSS::minify($css, array(
+            fwrite($fh, \Minify_CSS::minify($css, array(
                 'currentDir' => dirname($file['file'])
             )));
         }
     }
 }
 
-class sacy_Exception extends Exception {}
+class Exception extends \Exception {}
