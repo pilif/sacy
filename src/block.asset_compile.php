@@ -31,7 +31,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         //
         // We'll need that to conditionally handle tags (like jTemplate's
         // <script type="text/html" that should remain)
-        foreach(array('link', 'script') as $tag){
+        foreach(array('link', 'style', 'script') as $tag){
             $p = str_replace('T', preg_quote($tag), $tag_pattern);
             if(preg_match_all($p, $content, $ms, PREG_OFFSET_CAPTURE)){
                 foreach($ms[1] as $i => $m){

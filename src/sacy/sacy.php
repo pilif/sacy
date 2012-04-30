@@ -69,14 +69,15 @@ class WorkUnitExtractor{
     function workUnitFromTag($tag, $attrdata, $content){
         switch($tag){
             case 'link':
+            case 'style':
                 $fn = 'extract_style_unit';
                 break;
             case 'script':
                 $fn = 'extract_script_unit';
                 break;
-            default: throw new Exception("Cannot handle tag: $tag");
+            default: throw new Exception("Cannot handle tag: ($tag)");
         }
-        return $this->$fn($attrdata, $content);
+        return $this->$fn($tag, $attrdata, $content);
     }
 
     private function extract_attrs($attstr){
@@ -108,49 +109,53 @@ class WorkUnitExtractor{
     }
 
 
-    private function extract_style_unit($attrdata, $content){
-        // if any of these conditions are met, this handler will decline
-        // handling the tag:
-        //
-        //  - the tag contains content (invalid markup)
-        //  - the tag uses any rel beside 'stylesheet' (valid, but not supported)
-        //  - the tag uses a not-supported type (
+    private function extract_style_unit($tag, $attrdata, $content){
         $attrs = $this->extract_attrs($attrdata);
         $attrs['type'] = strtolower($attrs['type']);
+
+        // invalid markup
+        if ($tag == 'link' && !empty($content)) return false;
+        if ($tag == 'style' && empty($content)) return false;
+        if ($tag == 'link' && empty($attrs['href'])) return false;
+
+        // not a stylesheet
+        if ($tag == 'link' && strtolower($attrs['rel']) != 'stylesheet') return false;
+
+        // type attribute required
+        if (!isset($attrs['type'])) return false;
+
+        // not one of the supported types
+        if (!in_array(strtolower($attrs['type']), CssRenderHandler::supportedTransformations()))
+            return false;
+
+        // in debug mode 3, only transform
         if ($this->_cfg->getDebugMode() == 3 &&
                 !CssRenderHandler::willTransformType($attrs['type']))
             return false;
 
-        if (empty($content) && (strtolower($attrs['rel']) == 'stylesheet') &&
-            (!isset($attrs['type']) ||
-            (in_array(strtolower($attrs['type']), CssRenderHandler::supportedTransformations())))){
-            if (!isset($attrs['media']))
-                $attrs['media'] = "";
+        if (!isset($attrs['media']))
+            $attrs['media'] = "";
 
+        $path = null;
+        if (empty($content)){
             $path = $this->urlToFile($attrs['href']);
             if ($path === false) return false;
-
-            return array(
-                'group' => $attrs['media'],
-                'file' => $path,
-                'type' => $attrs['type']
-            );
         }
-        return false;
+
+        return array(
+            'group' => $attrs['media'],
+            'file' => $path,
+            'content' => $content,
+            'type' => $attrs['type']
+        );
     }
 
     private function validTag($attrs){
         $types = array_merge(array('text/javascript', 'application/javascript'), JavaScriptRenderHandler::supportedTransformations());
-        return  in_array(
-            $attrs['type'],
-            $types
-        ) && !empty($attrs['src']);
+        return  in_array($attrs['type'], $types);
     }
 
-    private function extract_script_unit($attrdata, $content){
-        // don't handle non-empty tags
-        if (preg_match('#\S+#', $content)) return false;
-
+    private function extract_script_unit($tag, $attrdata, $content){
         $attrs = $this->extract_attrs($attrdata);
         if (!$attrs['type'])
             $attrs['type'] = 'text/javascript';
@@ -160,12 +165,18 @@ class WorkUnitExtractor{
             return false;
         }
 
-
         if ($this->validTag($attrs)) {
-            $path = $this->urlToFile($attrs['src']);
-            if ($path === false) return false;
+            $path = null;
+            if (!$content){
+                $path = $this->urlToFile($attrs['src']);
+                if ($path === false){
+                    return false;
+                }
+            }
+
             return array(
                 'group' => '',
+                'content' => $content,
                 'file' => $path,
                 'type' => $attrs['type']
             );
@@ -242,6 +253,7 @@ class CacheRenderer {
     function renderWorkUnits($tag, $cat, $work_units){
         switch($tag){
             case 'link':
+            case 'style':
                 $fn = 'render_style_units';
                 break;
             case 'script':
