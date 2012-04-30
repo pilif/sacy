@@ -294,7 +294,7 @@ class CacheRenderer {
 
     private function generate_content_cache($work_units, CacheRenderHandler $rh){
         $content = implode("\n", array_map(function($u){ return $u['content']; }, $work_units));
-        $key = md5($content);
+        $key = md5($content.$this->_cfg->getDebugMode());
         if ($d = $this->fragment_cache->get($key)){
             return $d;
         }
