@@ -188,20 +188,39 @@ By now, you will probably have heard of either [less](http://lesscss.org/) or
 as they really go a long ways in making your life easier.
 
 Sacy has built-in support to do such transformations if it finds (see below)
-[lessphp](http://leafo.net/lessphp) or [PHamlP](http://code.google.com/p/phamlp/) for CSS or [coffeescript-php](https://github.com/alxlit/coffeescript-php)
-loaded or you provide it with paths to the respective official tools (also, see below)
+[lessphp](http://leafo.net/lessphp) or [PHamlP](http://code.google.com/p/phamlp/)
+for CSS or [coffeescript-php](https://github.com/alxlit/coffeescript-php)
+loaded or you provide it with paths to the respective official tools
+(also, see below)
 
-Inside an `{asset_compile}` tag, just link to these files like so:
+Inside an `{asset_compile}` tag, just link to these files, or write inline code
+like so:
 
     {asset_compile}
     <link type="text/x-sass" rel="stylesheet" href="/styles/style.sass" />
     <link type="text/x-scss" rel="stylesheet" href="/styles/style.scss" />
     <link type="text/x-less" rel="stylesheet" href="/styles/style.less" />
     <script type="text/coffeescript" src="/jslib/file.coffee"></script>
+
+    <script type="text/coffeescript">
+    fun = (a)->
+      alert "Hello #{a}"
+    fun "World"
+    </script>
+
     {/asset_compile}
 
 Sacy uses the mime-types you provide with the type attribute to invoke the
 correct transformer before writing the file to the cache.
+
+#### Note
+
+In general, it's not good practice to use inline `script`- or `style`-tags, so
+it's recommended you use this feature (as of 0.4) of sacy sparingly. It can
+still be useful though if you have to pass data from smarty through to the JS
+layer and you'd like to use coffee script for that too.
+
+You would also get free minification of course.
 
 See below for some information about dependencies and how to bundle them.
 
@@ -268,6 +287,25 @@ all url()'s it finds using information from `ASSET_COMPILE_URL_ROOT` to
 point to the correct files again. This is now done by Minify which is
 included in the package.
 
+* **inline tags** since version 0.4, sacy supports transforming tags with
+inline content. This means that you can now have coffee-script and sass or
+all other types supported by sacy directly inside your page. While not
+recommended practice, sometimes, you need to pass data from smarty to the
+JS code and it would be cool to use coffee there too!
+
+Notes about inline tags
+-----------------------
+Because the the inline script passed into sacy inherently changes depending
+on its input and because you can nest smarty code inside such inline scripts,
+sacy has to hash the whole untransformed inlined code before it can check
+whether it already has transformed that specific piece of code.
+
+This costs (comparatively) more performance than simply check a file for its
+last modification time, so using sacy to deal with inlined code segments is
+potentially slower than using it with external files (which is the
+recommended practice anyways).
+
+
 Installation
 ------------
 
@@ -286,41 +324,15 @@ make just that directory accessible to the outside. You do not want
 world-writable directories exposed more than what's absolutely needed.
 
 
-*PHP 5.3*
-
-If you have PHP 5.3, you can download a single .php file that is actually a
-phar archive. This .php file on one end contains all of sacy (minus the
-transformation support) and on the other end behaves exactly like a smarty
-plugin.
-
-So the installation would be to just download that file and place it in
-your smarty plugins directory and you are done.
-
-See the next section how you can create your own bundle that also includes
-support for the transformations.
-
-
-*PHP 5.2*
-
-If you can't use PHP 5.3 yet, you can't make use of the cool phar support,
-so you will have to download the full source code and extract the whole
-contents of the `src/` folder into your smarty/plugins folder (including
-the subfolder).
-
-If you need transformation support, make sure that you load the two packages
-before you use sacy so that the transformation support can be enabled.
-
-There is no way to create a bundle containing all needed files.
-
-Building bundles
-----------------
+Building sacy
+-------------
 
 Let's say you want to create one single smarty plugin file (for easy
 deployment) that contains all dependencies for both minification and
 transformation.
 
-If you have PHP 5.3 you can do that using the `build.php` script that
-comes with the sacy source code.
+Using the power of PHP 5.3's phar module you can do that using the
+`build.php` script that comes with the sacy source code.
 
 build.php is going to write a phar file, so you need to have phar write
 support enabled in your php.ini (set `phar.readonly` to off). Then you
@@ -332,9 +344,13 @@ It supports the following parameters:
 
 `-j` will add JSMin support into the bundle
 
-Note that those two are required by all means for sacy to work. If you
-decide not to bundle them, that means that you need to have them available
+Note that CSSMin is required by all means for sacy to work. If you
+decide not to bundle it, that means that you need to have it available
 and loaded somewhere else or sacy will blow up.
+
+JSMin is optional if you use an external processor, but in general, sacy won't
+work without any means for CSS- and JS minification (which was its initial
+purpose).
 
 Then, the script has two more optional parameters:
 
@@ -351,7 +367,6 @@ repository clone of coffeescript-php (https://github.com/alxlit/coffeescript-php
 If you provide this, sacy will transform coffee script files to javascript
 for you.
 
-
 As before: If you don't bundle these three but you have them loaded somewhere
 before sacy is used, then sacy will use your already loaded copy to do
 the thing.
@@ -364,9 +379,12 @@ just that one file) in your smarty plugins directory and you're done.
 You can provide a `-o` parameter to `build.php` to have
 `block_asset_compile.php` written in another directory of your choice.
 
-If you use `-z g` or `-z b`, the files inside the archive will be compressed using either gzip (g) or bzip2 (b). Be mindful though that for such a .phar file to be usable, the target machine needs the corresponding compression extension to be loaded.
+If you use `-z g` or `-z b`, the files inside the archive will be compressed
+using either gzip (g) or bzip2 (b). Be mindful though that for such a .phar
+file to be usable, the target machine needs the corresponding compression
+extension to be loaded.
 
-**Note:** If you indent to use the official, external tools instead of the PHP
+**Note:** If you indend to use the official, external tools instead of the PHP
 ports (see below), you don't have to include any of the PHP native tools into
 the bundle (aside of CSSMin for which there are no external replacements)
 
@@ -415,13 +433,61 @@ Configuration
  debug_toggle is set to `_sacy_debug` per default. If it's set to `false` sacy
  will never do any debug handling regardless of the request.
 
-If you want to specify a default value for all tags on a page, you can define SACY_(any of the above in uppercase) before you use the tag the first time. In that case, the value of your define() will be used as default.
+If you want to specify a default value for all tags on a page, you can define
+SACY_(any of the above in uppercase) before you use the tag the first time.
+In that case, the value of your define() will be used as default.
 
 Example:
 
     define(SACY_WRITE_HEADERS, false);
 
 Will cause {asset_compile} without parameters not to emit the headers.
+
+### Fragment cache configuration
+
+In order to correctly deal with inline tags (`<style>`...`</style>` or
+`<script>`..`</script>` tags not referring to an external resource), sacy
+needs read/write access to a fragment cache where it stores the output of its
+transformation under a key derived by hashing the original tag contents.
+
+By default, sacy uses a very trivial filesystem based cache in a folder called
+"fragments" which it auto-creates inside of `ASSET_COMPILE_OUTPUT_DIR`.
+
+If you have a better caching facility you'd like sacy to use, that's fine and
+even recommended in order to safe the server a lot of `stat()`-ing.
+
+In order to do that, create a class that implements two methods:
+
+```PHP
+<?php
+class MyOwnFragmentCache{
+  function __construct(){}
+  function get($key){}
+  function set($key, $value){}
+}
+?>
+```
+
+Key is guaranteed to match `/^[0-9a-z]+$/`. If get returns a value considered
+`false` by PHP, sacy assumes a cache miss. The constructor must not require
+any arguments.
+
+In order to not mess with Smarty's autoloading of plugins, there's no specific
+interface your class has to implement (as that would require you to pre-load
+the block plugin in order for PHP to find the interface).
+
+Once that class exists, define `SACY_FRAGMENT_CACHE_CLASS` to the name of
+your class:
+
+```PHP
+<?php
+define('SACY_FRAGMENT_CACHE_CLASS', 'MyOwnFragmentCache');
+?>
+```
+
+If that define is set, sacy is going to use that class instead of its own
+trivial file based cache.
+
 
 ### Tool configuration
 
@@ -461,11 +527,15 @@ define()'ing some constants pointing sacy to the path of the respecive tools:
   requires a working ruby installation (1.8.7 or later) and you would install
   it using `gem install sass`, giving you an executable at `/usr/bin/sass`
 
-If you are not sure what you are doing, always install these utilities to their global locations. If you install them as a user account, chances are that the user the web server runs as will not be able to find them or if they do, the tools themselves will probably not find their required libraries.
+If you are not sure what you are doing, always install these utilities to
+their global locations. If you install them as a user account, chances are
+that the user the web server runs as will not be able to find them or if they
+do, the tools themselves will probably not find their required libraries.
 
 I'm not saying it's impossible - it's just much harder.
 
-At the moment, CSS minification is done only using the native PHP CSSMin, as this is as "official" as all the other tools.
+At the moment, CSS minification is done only using the native PHP CSSMin, as
+this is as "official" as all the other tools.
 
 
 ### Web servers
@@ -530,10 +600,9 @@ first time.
 Licence
 -------
 
-sacy is © 2009-2011 by Philip Hofstetter <phofstetter@sensational.ch> and is
+sacy is © 2009-2012 by Philip Hofstetter <phofstetter@sensational.ch> and is
 licensed under the MIT License which is reprinted in the LICENSE file
 accompanying this distribution.
 
 If you find this useful, consider dropping me a line, or,
 if you want, a patch :-)
-
