@@ -1,13 +1,7 @@
 <?php
 namespace sacy;
 
-interface FragmentCache{
-    function __construct(); # require parameter-less constructor
-    function get($key);
-    function set($key, $value);
-}
-
-class FileCache implements FragmentCache{
+class FileCache{
     private $cache_dir;
 
     function __construct(){

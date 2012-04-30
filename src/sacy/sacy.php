@@ -233,7 +233,7 @@ class CacheRenderer {
     private $_cfg;
     private $_source_file;
 
-    /** @var FragmentCache */
+    /** @var FileCache */
     private $fragment_cache;
 
     function __construct(Config $config, $source_file){
@@ -245,8 +245,9 @@ class CacheRenderer {
             'sacy\FileCache';
         $this->fragment_cache = new $class();
 
-        if (!($this->fragment_cache instanceof FragmentCache)){
-            throw new Exception("Invalid fragment cache class specified");
+        foreach(array('get', 'set') as $m){
+            if (!method_exists($this->fragment_cache, $m))
+                throw new Exception("Invalid fragment cache class specified");
         }
     }
 
