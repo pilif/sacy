@@ -35,6 +35,8 @@ if (!class_exists('SassParser') && !ExternalProcessorRegistry::typeIsSupported('
     }
 }
 
+class Exception extends \Exception {}
+
 /*
  *   An earlier experiment contained a real framework for tag
  *   and parser registration. In the end, this turned out
@@ -67,10 +69,10 @@ class WorkUnitExtractor{
     function workUnitFromTag($tag, $attrdata, $content){
         switch($tag){
             case 'link':
-                $fn = 'extract_css_unit';
+                $fn = 'extract_style_unit';
                 break;
             case 'script':
-                $fn = 'extract_js_unit';
+                $fn = 'extract_script_unit';
                 break;
             default: throw new Exception("Cannot handle tag: $tag");
         }
@@ -106,7 +108,7 @@ class WorkUnitExtractor{
     }
 
 
-    private function extract_css_unit($attrdata, $content){
+    private function extract_style_unit($attrdata, $content){
         // if any of these conditions are met, this handler will decline
         // handling the tag:
         //
@@ -145,7 +147,7 @@ class WorkUnitExtractor{
         ) && !empty($attrs['src']);
     }
 
-    private function extract_js_unit($attrdata, $content){
+    private function extract_script_unit($attrdata, $content){
         // don't handle non-empty tags
         if (preg_match('#\S+#', $content)) return false;
 
@@ -216,44 +218,87 @@ class Config{
 
 class CacheRenderer {
     private $_cfg;
+    private $_source_file;
 
-    function __construct(Config $config){
+    /** @var FragmentCache */
+    private $fragment_cache;
+
+    function __construct(Config $config, $source_file){
         $this->_cfg = $config;
+        $this->_source_file = $source_file;
+
+        $class = defined('SACY_FRAGMENT_CACHE_CLASS') ?
+            SACY_FRAGMENT_CACHE_CLASS :
+            'sacy\FileCache';
+        $this->fragment_cache = new $class();
+
+        if (!($this->fragment_cache instanceof FragmentCache)){
+            throw new Exception("Invalid fragment cache class specified");
+        }
     }
 
-    function renderWorkUnits($tag, $cat, $files){
+    function renderWorkUnits($tag, $cat, $work_units){
         switch($tag){
             case 'link':
-                $fn = 'render_css_files';
+                $fn = 'render_style_units';
                 break;
             case 'script':
-                $fn = 'render_js_files';
+                $fn = 'render_script_units';
                 break;
             default: throw new Exception("Cannot handle tag: $tag");
         }
-        return $this->$fn($files, $cat);
+        return $this->$fn($work_units, $cat);
     }
 
 
-    private function render_css_files($files, $cat){
-        $ref = $this->generate_cache($files, new CssRenderHandler($this->_cfg));
-        if (!$ref) return false;
+    private function render_style_units($work_units, $cat){
+        // we can do this because tags are grouped by the presence of a file or not
         $cs = $cat ? sprintf(' media="%s"', htmlspecialchars($cat, ENT_QUOTES)) : '';
-        return sprintf('<link rel="stylesheet" type="text/css"%s href="%s" />'."\n",
-                       $cs, htmlspecialchars($ref, ENT_QUOTES)
-                      );
+        if ($work_units[0]['file']){
+            if ($res = $this->generate_file_cache($work_units, new CssRenderHandler($this->_cfg, $this->_source_file))){
+                $res = sprintf('<link rel="stylesheet" type="text/css"%s href="%s" />'."\n", $cs, htmlspecialchars($res, ENT_QUOTES));
+            }
+        }else{
+            $res = $this->generate_content_cache($work_units, new CssRenderHandler($this->_cfg, $this->_source_file));
+            $res = sprintf('<style type="text/css"%s>%s</style>'."\n", $cs, $res);
+        }
+        return $res;
 
     }
 
-    private function render_js_files($files, $cat){
-        $ref = $this->generate_cache($files, new JavaScriptRenderHandler($this->_cfg));
-        if (!$ref) return false;
-        return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($ref, ENT_QUOTES));
+    private function render_script_units($work_units, $cat){
+        if ($work_units[0]['file']){
+            if ($res = $this->generate_file_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->_source_file))){
+                return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($res, ENT_QUOTES));
+            }
+        }else{
+            return sprintf('<script type="text/javascript">%s</script>'."\n",
+                $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->_source_file))
+            );
+        }
     }
 
-    private function generate_cache($work_units, CacheRenderHandler $rh){
-        if (!is_dir(ASSET_COMPILE_OUTPUT_DIR))
-            mkdir(ASSET_COMPILE_OUTPUT_DIR);
+    private function generate_content_cache($work_units, CacheRenderHandler $rh){
+        $content = implode("\n", array_map(function($u){ return $u['content']; }, $work_units));
+        $key = md5($content);
+        if ($d = $this->fragment_cache->get($key)){
+            return $d;
+        }
+        $output = array();
+        foreach($work_units as $w){
+            $output[] = $rh->getOutput($w);
+        }
+        $output = implode("\n", $output);
+        $this->fragment_cache->set($key, $output);
+        return $output;
+    }
+
+    private function generate_file_cache($work_units, CacheRenderHandler $rh){
+        if (!is_dir(ASSET_COMPILE_OUTPUT_DIR)){
+            if (!@mkdir(ASSET_COMPILE_OUTPUT_DIR, 0755, true)){
+                throw new Exception("Failed to create output directory");
+            }
+        }
 
         $f = function($f) use ($rh){
             return basename($f["file"], "'.$rh->getFileExtension().'");
@@ -347,19 +392,26 @@ class CacheRenderer {
 }
 
 interface CacheRenderHandler{
-    function __construct(Config $cfg);
+    function __construct(Config $cfg, $source_file);
     function getFileExtension();
     static function willTransformType($type);
-    function writeHeader($fh, $files);
-    function processFile($fh, $file);
+    function writeHeader($fh, $work_units);
+    function processFile($fh, $work_unit);
+    function getOutput($work_unit);
     function getConfig();
 }
 
-abstract class sacy_ConfiguredRenderHandler implements CacheRenderHandler{
+abstract class ConfiguredRenderHandler implements CacheRenderHandler{
     private $_cfg;
+    private $_source_file;
 
-    function __construct(Config $cfg){
+    function __construct(Config $cfg, $source_file){
         $this->_cfg = $cfg;
+        $this->_source_file = $source_file;
+    }
+
+    protected function getSourceFile(){
+        return $this->_source_file;
     }
 
     public function getConfig(){
@@ -371,7 +423,7 @@ abstract class sacy_ConfiguredRenderHandler implements CacheRenderHandler{
     }
 }
 
-class JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
+class JavaScriptRenderHandler extends ConfiguredRenderHandler{
     static function supportedTransformations(){
         if (function_exists('CoffeeScript\compile') || ExternalProcessorRegistry::typeIsSupported('text/coffeescript'))
             return array('text/coffeescript');
@@ -385,43 +437,50 @@ class JavaScriptRenderHandler extends sacy_ConfiguredRenderHandler{
 
     function getFileExtension() { return '.js'; }
 
-    function writeHeader($fh, $files){
+    function writeHeader($fh, $work_units){
         fwrite($fh, "/*\nsacy javascript cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
-        foreach($files as $file){
+        foreach($work_units as $file){
             fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
 
-    function processFile($fh, $file){
+    function getOutput($work_unit){
         $debug = $this->getConfig()->getDebugMode() == 3;
-
-        if ($this->getConfig()->get('write_headers'))
-            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
-        $js = @file_get_contents($file['file']);
-        if ($js == false){
-            fwrite($fh, "/* <Error accessing file> */\n");
-            return;
+        if ($work_unit['file']){
+            $js = @file_get_contents($work_unit['file']);
+            if (!$js) return "/* error accessing file */";
+            $source_file = $work_unit['file'];
+        }else{
+            $js = $work_unit['content'];
+            $source_file = $this->getSourceFile();
         }
-        if ($file['type'] == 'text/coffeescript'){
+
+        if ($work_unit['type'] == 'text/coffeescript'){
             $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
-                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $file['file']) :
+                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $source_file) :
                 \Coffeescript::build($js);
         }
         if ($debug){
-            fwrite($fh, $js);
+            return $js;
         }else{
-            fwrite($fh, ExternalProcessorRegistry::typeIsSupported('text/javascript') ?
-                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js, $file['file']) :
-                \JSMin::minify($js)
-            );
+            return ExternalProcessorRegistry::typeIsSupported('text/javascript') ?
+                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js, $source_file) :
+                \JSMin::minify($js);
         }
+
+    }
+
+    function processFile($fh, $work_unit){
+        if ($this->getConfig()->get('write_headers'))
+            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+        fwrite($fh, $this->getOutput($work_unit));
     }
 
 }
 
-class CssRenderHandler extends sacy_ConfiguredRenderHandler{
+class CssRenderHandler extends ConfiguredRenderHandler{
     static function supportedTransformations(){
         $res = array('', 'text/css');
         if (class_exists('lessc') || ExternalProcessorRegistry::typeIsSupported('text/x-less'))
@@ -439,40 +498,50 @@ class CssRenderHandler extends sacy_ConfiguredRenderHandler{
         return !in_array($type, array('', 'text/css'));
     }
 
-    function writeHeader($fh, $files){
+    function writeHeader($fh, $work_units){
         fwrite($fh, "/*\nsacy css cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
-        foreach($files as $file){
+        foreach($work_units as $file){
             fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
 
-    function processFile($fh, $file){
-        $debug = $this->getConfig()->getDebugMode() == 3;
+    function processFile($fh, $work_unit){
         if ($this->getConfig()->get('write_headers'))
-           fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
-        $css = @file_get_contents($file['file']); //maybe stream this later to save memory?
-        if ($css == false){
-            fwrite($fh, "/* <Error accessing file> */\n");
-            return;
+           fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+
+        fwrite($fh, $this->getOutput($work_unit));
+    }
+
+    function getOutput($work_unit){
+        $debug = $this->getConfig()->getDebugMode() == 3;
+
+        if ($work_unit['file']){
+            $css = @file_get_contents($work_unit['file']);
+            if (!$css) return "/* error accessing file */";
+            $source_file = $work_unit['file'];
+        }else{
+            $css = $work_unit['content'];
+            $source_file = $this->getSourceFile();
         }
 
-        if (ExternalProcessorRegistry::typeIsSupported($file['type'])){
-            $css = ExternalProcessorRegistry::getTransformerForType($file['type'])->transform($css, $file['file']);
+        if (ExternalProcessorRegistry::typeIsSupported($work_unit['type'])){
+            $css = ExternalProcessorRegistry::getTransformerForType($work_unit['type'])
+                ->transform($css, $source_file);
         }else{
-            if ($file['type'] == 'text/x-less'){
+            if ($work_unit['type'] == 'text/x-less'){
                 $less = new \lessc();
-                $less->importDir = dirname($file['file']).'/'; #lessphp concatenates without a /
+                $less->importDir = dirname($source_file).'/'; #lessphp concatenates without a /
                 $css = $less->parse($css);
             }
-            if (in_array($file['type'], array('text/x-scss', 'text/x-sass'))){
+            if (in_array($work_unit['type'], array('text/x-scss', 'text/x-sass'))){
                 $config = array(
                     'cache' => false, // no need. WE are the cache!
                     'debug_info' => $debug,
                     'line' => $debug,
-                    'load_paths' => array(dirname($file['file'])),
-                    'filename' => $file['file'],
+                    'load_paths' => array(dirname($source_file)),
+                    'filename' => $source_file,
                     'quiet' => true,
                     'style' => $debug ? 'nested' : 'compressed'
                 );
@@ -482,18 +551,16 @@ class CssRenderHandler extends sacy_ConfiguredRenderHandler{
         }
 
         if ($debug){
-            fwrite($fh, \Minify_CSS_UriRewriter::rewrite(
+            return \Minify_CSS_UriRewriter::rewrite(
                 $css,
-                dirname($file['file']),
+                dirname($source_file),
                 $_SERVER['DOCUMENT_ROOT'],
                 array()
-            ));
+            );
         }else{
-            fwrite($fh, \Minify_CSS::minify($css, array(
-                'currentDir' => dirname($file['file'])
-            )));
+            return \Minify_CSS::minify($css, array(
+                'currentDir' => dirname($source_file)
+            ));
         }
     }
 }
-
-class Exception extends \Exception {}

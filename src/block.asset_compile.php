@@ -21,7 +21,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             return $content;
         }
 
-        $tag_pattern = '#\s*<\s*T\s+(.*)\s*(?:/>|>(.*)</T>)\s*#Uim';
+        $tag_pattern = '#\s*<\s*T(?:\s+(.*))?\s*(?:/>|>((?:.|\n)*)</T>)\s*#Uim';
         $tags = array();
 
         $aindex = 0;
@@ -55,7 +55,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
         $ex = new sacy\WorkUnitExtractor($cfg);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
-        $renderer = new sacy\CacheRenderer($cfg);
+        $renderer = new sacy\CacheRenderer($cfg, $_SERVER['SCRIPT_FILENAME']);
         $patched_content = $content;
 
         $render = array();
