@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>sacy by pilif</title>
+    
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>sacy</h1>
+        <p>Smarty Asset Compiler</p>
+        <p class="view"><a href="https://github.com/pilif/sacy">View the Project on GitHub <small>pilif/sacy</small></a></p>
+        <ul>
+          <li><a href="https://github.com/pilif/sacy/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/pilif/sacy/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/pilif/sacy">Fork On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p>Sacy turns</p>
+
+<div class="highlight">
+<pre>{asset_compile}
+<span class="nt">&lt;link</span> <span class="na">type=</span><span class="s">"text/css"</span> <span class="na">rel=</span><span class="s">"stylesheet"</span> <span class="na">href=</span><span class="s">"/styles/file1.css"</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;link</span> <span class="na">type=</span><span class="s">"text/x-sass"</span> <span class="na">rel=</span><span class="s">"stylesheet"</span> <span class="na">href=</span><span class="s">"/styles/file2.sass"</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;link</span> <span class="na">type=</span><span class="s">"text/x-scss"</span> <span class="na">rel=</span><span class="s">"stylesheet"</span> <span class="na">href=</span><span class="s">"/styles/file3.scss"</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;link</span> <span class="na">type=</span><span class="s">"text/x-less"</span> <span class="na">rel=</span><span class="s">"stylesheet"</span> <span class="na">href=</span><span class="s">"/styles/file4.less"</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/javascript"</span> <span class="na">src=</span><span class="s">"/jslib/file1.js"</span><span class="nt">&gt;&lt;/script&gt;</span>
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/coffeescript"</span> <span class="na">src=</span><span class="s">"/jslib/file2.coffee"</span><span class="nt">&gt;&lt;/script&gt;</span>
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/javascript"</span> <span class="na">src=</span><span class="s">"/jslib/file3.js"</span><span class="nt">&gt;&lt;/script&gt;</span>
+{/asset_compile}
+</pre>
+</div>
+
+
+<p>into</p>
+
+<div class="highlight">
+<pre><span class="nt">&lt;link</span> <span class="na">type=</span><span class="s">"text/css"</span> <span class="na">rel=</span><span class="s">"stylesheet"</span> <span class="na">href=</span><span class="s">"/assetcache/many-files-1234abc.css"</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/javascript"</span> <span class="na">src=</span><span class="s">"/assetcache/many-files-abc123.js"</span><span class="nt">&gt;&lt;/script&gt;</span>
+</pre>
+</div>
+
+
+<h3>What is it?</h3>
+
+<p>Transform, minify and merge external assets on your page into single, infinitely 
+client-side-cacheable files without the hassle of build-script or manual asset
+versioning.</p>
+
+<p>All done by a simple Smarty Plugin.</p>
+
+<h3>Download:</h3>
+
+<p>Latest release: <a href="https://github.com/downloads/pilif/sacy/sacy-0.3.1.tar.bz2">0.3.1</a></p>
+
+<p>Latest prerelease: <a href="https://github.com/downloads/pilif/sacy/sacy-0.4-beta1.tar.bz2">0.4-beta1</a></p>
+
+<h3>What's new?</h3>
+
+<p>2012-04-30: <a href="https://github.com/downloads/pilif/sacy/sacy-0.4-beta1.tar.bz2">Version 0.4-beta1</a> has just been released with support for inline-tags.</p>
+
+<p>2012-04-26: <a href="https://github.com/downloads/pilif/sacy/sacy-0.3.1.tar.bz2">Version 0.3.1</a> has just been released which restores support for PHP 5.2.</p>
+
+<h3>License</h3>
+
+<p>sacy is © 2012 by <a href="https://twitter.com/pilif">pilif</a> available under the MIT license</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/pilif">pilif</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
