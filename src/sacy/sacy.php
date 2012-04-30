@@ -152,6 +152,8 @@ class WorkUnitExtractor{
         if (preg_match('#\S+#', $content)) return false;
 
         $attrs = $this->extract_attrs($attrdata);
+        if (!$attrs['type'])
+            $attrs['type'] = 'text/javascript';
         $attrs['type'] = strtolower($attrs['type']);
         if ($this->_cfg->getDebugMode() == 3 &&
                 !JavaScriptRenderHandler::willTransformType($attrs['type'])){

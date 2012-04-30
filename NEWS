@@ -1,5 +1,6 @@
 Version 0.4 (2012-??-??):
  - Require PHP 5.3
+ - Treat typeless script tags as JS instead of ignoring the tag
  - Errors while processing files are only written to the output.
    No more smarty errors are triggered.
 
