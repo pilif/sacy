@@ -1,4 +1,6 @@
 Version 0.4 (2012-??-??):
+ - Also write statically precompressed files for use with MultiViews
+   in Apache or gzip_static in nginx
  - Support for inline-content-tags
  - Treat typeless script tags as JS instead of ignoring the tag
  - Errors while processing files are only written to the output.

@@ -371,7 +371,7 @@ class CacheRenderer {
             // the caller will leave the CSS unaltered
             return false;
         }
-        $fhc = @fopen($cfile, 'w');
+        $fhc = @fopen($cfile, 'w+');
         if (!$fhc){
             trigger_error("Cannot open cache file: $cfile", E_USER_WARNING);
             fclose($fhl);
@@ -398,7 +398,16 @@ class CacheRenderer {
             }
         }
 
+        $ts = time();
+        if (function_exists('gzencode')){
+            $enc = "$cfile.gz";
+            fseek($fhc, 0, SEEK_SET);
+            file_put_contents($enc, gzencode(stream_get_contents($fhc), 9));
+            touch($enc, $ts);
+        }
+
         fclose($fhc);
+        touch($cfile, $ts);
         fclose($fhl);
         unlink($lockfile);
         return $res;
