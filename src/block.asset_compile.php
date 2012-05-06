@@ -21,7 +21,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             return $content;
         }
 
-        $tag_pattern = '#\s*<\s*T(?:\s+(.*))?\s*(?:/>|>((?:.|\n)*)</T>)\s*#Uim';
+        $tag_pattern = '#\s*<\s*T(?:\s+(.*))?\s*(?:/>|>(.*)</T>)\s*#Uims';
         $tags = array();
 
         $aindex = 0;
