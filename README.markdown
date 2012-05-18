@@ -181,7 +181,7 @@ inaccurate.
 Also, remote resources can change at will, which would cause the whole cache
 file to be regenerated way too often.
 
-Improved CSS Language transformations
+Language transformations
 -------------------------------------
 
 By now, you will probably have heard of either [less](http://lesscss.org/) or
