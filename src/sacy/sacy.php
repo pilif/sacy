@@ -449,9 +449,15 @@ abstract class ConfiguredRenderHandler implements CacheRenderHandler{
 
 class JavaScriptRenderHandler extends ConfiguredRenderHandler{
     static function supportedTransformations(){
+        $supported = array();
+
         if (function_exists('CoffeeScript\compile') || ExternalProcessorRegistry::typeIsSupported('text/coffeescript'))
-            return array('text/coffeescript');
-        return array();
+            $supported[] = 'text/coffeescript';
+
+        if (ExternalProcessorRegistry::typeIsSupported('text/x-eco'))
+            $supported[] = 'text/x-eco';
+
+        return $supported;
     }
 
     static function willTransformType($type){
@@ -485,6 +491,8 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
             $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
                 ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $source_file) :
                 \Coffeescript::build($js);
+        } else if ($work_unit['type'] == 'text/x-eco'){
+            $js = ExternalProcessorRegistry::getTransformerForType('text/x-eco')->transform($js, $source_file);
         }
         if ($debug){
             return $js;

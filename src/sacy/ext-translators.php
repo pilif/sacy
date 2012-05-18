@@ -92,6 +92,25 @@ class ProcessorCoffee extends ExternalProcessor{
     }
 }
 
+class ProcessorEco extends ExternalProcessor{
+    protected function getType(){
+        return 'text/x-eco';
+    }
+
+    protected function getCommandLine($filename){
+        if (!is_executable(SACY_TRANSFORMER_ECO)){
+            throw new Exception('SACY_TRANSFORMER_ECO defined but not executable');
+        }
+        // Calling eco with the filename here. Using stdin wouldn't
+        // cut it, as eco uses the filename to figure out the name of
+        // the js function it outputs.
+        return sprintf('%s -p %s',
+            SACY_TRANSFORMER_ECO,
+            escapeshellarg($filename)
+        );
+    }
+}
+
 class ProcessorSass extends ExternalProcessor{
 
     protected function getType(){
@@ -138,6 +157,10 @@ if (defined('SACY_COMPRESSOR_UGLIFY')){
 
 if (defined('SACY_TRANSFORMER_COFFEE')){
     ExternalProcessorRegistry::registerTransformer('text/coffeescript', 'sacy\ProcessorCoffee');
+}
+
+if (defined('SACY_TRANSFORMER_ECO')){
+    ExternalProcessorRegistry::registerTransformer('text/x-eco', 'sacy\ProcessorEco');
 }
 
 if (defined('SACY_TRANSFORMER_SASS')){

@@ -11,6 +11,7 @@ Sacy turns
     <script type="text/javascript" src="/jslib/file1.js"></script>
     <script type="text/coffeescript" src="/jslib/file2.coffee"></script>
     <script type="text/javascript" src="/jslib/file3.js"></script>
+    <script type="text/x-eco" src="/jslib/sometemplate.eco"></script>
     {/asset_compile}
 
 into
@@ -526,6 +527,10 @@ define()'ing some constants pointing sacy to the path of the respecive tools:
 - `SACY_TRANSFORMER_SASS` specifies the path to the sass compiler. This
   requires a working ruby installation (1.8.7 or later) and you would install
   it using `gem install sass`, giving you an executable at `/usr/bin/sass`
+
+- `SACY_TRANSFORMER_ECO` specifies the path to the eco compiler. You can
+  install it using `npm install -g eco`, which will likely put the eco
+  executable in `/usr/local/bin/eco`.
 
 If you are not sure what you are doing, always install these utilities to
 their global locations. If you install them as a user account, chances are
