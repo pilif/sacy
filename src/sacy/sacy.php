@@ -180,12 +180,28 @@ class WorkUnitExtractor{
                 'group' => '',
                 'content' => $content,
                 'file' => $path,
+                'data' => $this->parseDataAttrs($attrs),
                 'type' => $attrs['type']
             );
         }
         return false;
     }
 
+    private function parseDataAttrs($attrs){
+        $data = array();
+
+        foreach($attrs as $key => $value){
+            // Compromising again here on the valid
+            // format of the attr key, to keep the
+            // regex simple.
+            if(preg_match('#^data-([a-z\-]+)$#', $key, $match)){
+                $name = $match[1];
+                $data[$name] = $value;
+            }
+        }
+
+        return $data;
+    }
 }
 
 class Config{
