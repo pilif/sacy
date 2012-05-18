@@ -81,7 +81,9 @@ class WorkUnitExtractor{
     }
 
     private function extract_attrs($attstr){
-        $attextract = '#([a-z]+)\s*=\s*(["\'])\s*(.*?)\s*\2#';
+        // The attribute name regex is too relaxed, but let's
+        // compromise and keep it simple.
+        $attextract = '#([a-z\-]+)\s*=\s*(["\'])\s*(.*?)\s*\2#';
         if (!preg_match_all($attextract, $attstr, $m)) return false;
         $res = array();
         foreach($m[1] as $idx => $name){
