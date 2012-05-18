@@ -510,7 +510,8 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
                 ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $source_file) :
                 \Coffeescript::build($js);
         } else if ($work_unit['type'] == 'text/x-eco'){
-            $js = ExternalProcessorRegistry::getTransformerForType('text/x-eco')->transform($js, $source_file);
+            $eco = ExternalProcessorRegistry::getTransformerForType('text/x-eco');
+            $js = $eco->transform($js, $source_file, $work_unit['data']);
         }
         if ($debug){
             return $js;
