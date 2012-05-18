@@ -2,15 +2,15 @@
 namespace sacy;
 
 abstract class ExternalProcessor{
-    abstract protected function getCommandLine($filename);
+    abstract protected function getCommandLine($filename, $opts=array());
 
-    function transform($in, $filename){
+    function transform($in, $filename, $opts=array()){
         $s = array(
             0 => array('pipe', 'r'),
             1 => array('pipe', 'w'),
             2 => array('pipe', 'w')
         );
-        $cmd = $this->getCommandLine($filename);
+        $cmd = $this->getCommandLine($filename, $opts);
         $p = proc_open($cmd, $s, $pipes);
         if (!is_resource($p))
             throw new \Exception("Failed to execute $cmd");
@@ -75,7 +75,7 @@ class ExternalProcessorRegistry{
 }
 
 class ProcessorUglify extends ExternalProcessor{
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_COMPRESSOR_UGLIFY)){
             throw new Exception('SACY_COMPRESSOR_UGLIFY defined but not executable');
         }
@@ -84,7 +84,7 @@ class ProcessorUglify extends ExternalProcessor{
 }
 
 class ProcessorCoffee extends ExternalProcessor{
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_TRANSFORMER_COFFEE)){
             throw new Exception('SACY_TRANSFORMER_COFFEE defined but not executable');
         }
@@ -97,7 +97,7 @@ class ProcessorEco extends ExternalProcessor{
         return 'text/x-eco';
     }
 
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_TRANSFORMER_ECO)){
             throw new Exception('SACY_TRANSFORMER_ECO defined but not executable');
         }
@@ -117,7 +117,7 @@ class ProcessorSass extends ExternalProcessor{
         return 'text/x-sass';
     }
 
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_TRANSFORMER_SASS)){
             throw new Exception('SACY_TRANSFORMER_SASS defined but not executable');
         }
@@ -137,7 +137,7 @@ class ProcessorScss extends ProcessorSass{
 }
 
 class ProcessorLess extends ExternalProcessor{
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_TRANSFORMER_LESS)){
             throw new \Exception('SACY_TRANSFORMER_LESS defined but not executable');
         }
