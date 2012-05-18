@@ -2,15 +2,15 @@
 namespace sacy;
 
 abstract class ExternalProcessor{
-    abstract protected function getCommandLine($filename);
+    abstract protected function getCommandLine($filename, $opts=array());
 
-    function transform($in, $filename){
+    function transform($in, $filename, $opts=array()){
         $s = array(
             0 => array('pipe', 'r'),
             1 => array('pipe', 'w'),
             2 => array('pipe', 'w')
         );
-        $cmd = $this->getCommandLine($filename);
+        $cmd = $this->getCommandLine($filename, $opts);
         $p = proc_open($cmd, $s, $pipes);
         if (!is_resource($p))
             throw new \Exception("Failed to execute $cmd");
@@ -75,7 +75,7 @@ class ExternalProcessorRegistry{
 }
 
 class ProcessorUglify extends ExternalProcessor{
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_COMPRESSOR_UGLIFY)){
             throw new Exception('SACY_COMPRESSOR_UGLIFY defined but not executable');
         }
@@ -84,11 +84,32 @@ class ProcessorUglify extends ExternalProcessor{
 }
 
 class ProcessorCoffee extends ExternalProcessor{
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_TRANSFORMER_COFFEE)){
             throw new Exception('SACY_TRANSFORMER_COFFEE defined but not executable');
         }
         return sprintf('%s -c -s', SACY_TRANSFORMER_COFFEE);
+    }
+}
+
+class ProcessorEco extends ExternalProcessor{
+    protected function getType(){
+        return 'text/x-eco';
+    }
+
+    protected function getCommandLine($filename, $opts=array()){
+        if (!is_executable(SACY_TRANSFORMER_ECO)){
+            throw new Exception('SACY_TRANSFORMER_ECO defined but not executable');
+        }
+        // Calling eco with the filename here. Using stdin wouldn't
+        // cut it, as eco uses the filename to figure out the name of
+        // the js function it outputs.
+        $eco_root = $opts['eco-root'];
+        return sprintf('%s %s -p %s',
+            SACY_TRANSFORMER_ECO,
+            $eco_root ? sprintf('-i %s', escapeshellarg($eco_root)) : '',
+            escapeshellarg($filename)
+        );
     }
 }
 
@@ -98,7 +119,7 @@ class ProcessorSass extends ExternalProcessor{
         return 'text/x-sass';
     }
 
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_TRANSFORMER_SASS)){
             throw new Exception('SACY_TRANSFORMER_SASS defined but not executable');
         }
@@ -118,7 +139,7 @@ class ProcessorScss extends ProcessorSass{
 }
 
 class ProcessorLess extends ExternalProcessor{
-    protected function getCommandLine($filename){
+    protected function getCommandLine($filename, $opts=array()){
         if (!is_executable(SACY_TRANSFORMER_LESS)){
             throw new \Exception('SACY_TRANSFORMER_LESS defined but not executable');
         }
@@ -138,6 +159,10 @@ if (defined('SACY_COMPRESSOR_UGLIFY')){
 
 if (defined('SACY_TRANSFORMER_COFFEE')){
     ExternalProcessorRegistry::registerTransformer('text/coffeescript', 'sacy\ProcessorCoffee');
+}
+
+if (defined('SACY_TRANSFORMER_ECO')){
+    ExternalProcessorRegistry::registerTransformer('text/x-eco', 'sacy\ProcessorEco');
 }
 
 if (defined('SACY_TRANSFORMER_SASS')){
