@@ -81,7 +81,9 @@ class WorkUnitExtractor{
     }
 
     private function extract_attrs($attstr){
-        $attextract = '#([a-z]+)\s*=\s*(["\'])\s*(.*?)\s*\2#';
+        // The attribute name regex is too relaxed, but let's
+        // compromise and keep it simple.
+        $attextract = '#([a-z\-]+)\s*=\s*(["\'])\s*(.*?)\s*\2#';
         if (!preg_match_all($attextract, $attstr, $m)) return false;
         $res = array();
         foreach($m[1] as $idx => $name){
@@ -178,12 +180,28 @@ class WorkUnitExtractor{
                 'group' => '',
                 'content' => $content,
                 'file' => $path,
+                'data' => $this->parseDataAttrs($attrs),
                 'type' => $attrs['type']
             );
         }
         return false;
     }
 
+    private function parseDataAttrs($attrs){
+        $data = array();
+
+        foreach($attrs as $key => $value){
+            // Compromising again here on the valid
+            // format of the attr key, to keep the
+            // regex simple.
+            if(preg_match('#^data-([a-z\-]+)$#', $key, $match)){
+                $name = $match[1];
+                $data[$name] = $value;
+            }
+        }
+
+        return $data;
+    }
 }
 
 class Config{
@@ -449,9 +467,15 @@ abstract class ConfiguredRenderHandler implements CacheRenderHandler{
 
 class JavaScriptRenderHandler extends ConfiguredRenderHandler{
     static function supportedTransformations(){
+        $supported = array();
+
         if (function_exists('CoffeeScript\compile') || ExternalProcessorRegistry::typeIsSupported('text/coffeescript'))
-            return array('text/coffeescript');
-        return array();
+            $supported[] = 'text/coffeescript';
+
+        if (ExternalProcessorRegistry::typeIsSupported('text/x-eco'))
+            $supported[] = 'text/x-eco';
+
+        return $supported;
     }
 
     static function willTransformType($type){
@@ -485,6 +509,9 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
             $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
                 ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $source_file) :
                 \Coffeescript::build($js);
+        } else if ($work_unit['type'] == 'text/x-eco'){
+            $eco = ExternalProcessorRegistry::getTransformerForType('text/x-eco');
+            $js = $eco->transform($js, $source_file, $work_unit['data']);
         }
         if ($debug){
             return $js;
