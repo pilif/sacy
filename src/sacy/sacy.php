@@ -341,12 +341,16 @@ class CacheRenderer {
         if (strlen($ident) > 120)
             $ident = 'many-files-'.md5($ident);
         $max = 0;
+        $idents = array();
         foreach($work_units as $f){
+            $idents[] = array(
+                $f['group'], $f['file'], $f['type'], $f['tag']
+            );
             $max = max($max, filemtime($f['file']));
         }
 
         // not using the actual content for quicker access
-        $key = md5($max . serialize($work_units) . $rh->getConfig()->getDebugMode());
+        $key = md5($max . serialize($idents) . $rh->getConfig()->getDebugMode());
         $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
         $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
 
