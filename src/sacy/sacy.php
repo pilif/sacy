@@ -95,6 +95,17 @@ class WorkUnitExtractor{
     private function urlToFile($ref){
         $u = parse_url($ref);
         if ($u === false) return false;
+
+        // Let's check if there is a local path mapped to to the requested host.
+        // If so simulate a local path 
+        if (isset($u['host']) && isset($u['scheme']) 
+        	&& array_key_exists($u['scheme'] . '://' . $u['host'], $this->_cfg->get('url_fs_mappings'))
+		) {
+        	$mapping = $this->_cfg->get('url_fs_mappings');
+        	$u['path'] = $mapping[$u['scheme'] . '://' . $u['host']] . '/' . $u['path'];
+        	unset($u['host'], $u['scheme']);
+        }
+
         if (isset($u['host']) || isset($u['scheme']))
             return false;
 
@@ -110,6 +121,8 @@ class WorkUnitExtractor{
 
     }
 
+
+    
 
     private function extract_style_unit($tag, $attrdata, $content){
         $attrs = $this->extract_attrs($attrdata);
@@ -215,7 +228,7 @@ class Config{
         $this->params['query_strings'] = defined('SACY_QUERY_STRINGS') ? SACY_QUERY_STRINGS : 'ignore';
         $this->params['write_headers'] = defined('SACY_WRITE_HEADERS') ? SACY_WRITE_HEADERS : true;
         $this->params['debug_toggle']  = defined('SACY_DEBUG_TOGGLE') ? SACY_DEBUG_TOGGLE : '_sacy_debug';
-
+        $this->params['url_fs_mappings'] = defined('SACY_URL_FS_MAPPINGS') ? unserialize(SACY_URL_FS_MAPPINGS) : array();
         if (is_array($params))
             $this->setParams($params);
     }
@@ -233,14 +246,15 @@ class Config{
 
     public function setParams($params){
         foreach($params as $key => $value){
-            if (!in_array($key, array('query_strings', 'write_headers', 'debug_toggle')))
+            if (!in_array($key, array('query_strings', 'write_headers', 'debug_toggle', 'url_fs_mappings')))
                 throw new Exception("Invalid option: $key");
         }
         if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
             throw new Exception("Invalid setting for query_strings: ".$params['query_strings']);
         if (isset($params['write_headers']) && !in_array($params['write_headers'], array(true, false), true))
             throw new Exception("Invalid setting for write_headers: ".$params['write_headers']);
-
+		if (isset($params['url_fs_mappings']) && !is_array($params['url_fs_mappings']))
+			throw new Exception("Invalid format for url_fs_mappings, must be an array");
 
         $this->params = array_merge($this->params, $params);
     }
