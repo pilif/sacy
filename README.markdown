@@ -324,6 +324,17 @@ accessible and then using symlinks or a webserver level alias directory to
 make just that directory accessible to the outside. You do not want
 world-writable directories exposed more than what's absolutely needed.
 
+'SACY_URL_FS_MAPPINGS' is an optional constant that you can define to tell Sacy where to find certain files on your
+webserver that are included with a static path. Assuming you want to tell Sacy that all resources included from http://static.yourdomain.com are
+located inside /var/www/static on your server, set a serialized associative array to this constant this way:
+    define(
+    	'SACY_URL_FS_MAPPINGS', serialize(
+    		array(
+    			'static.yourdowmain.com' => '/var/www/static',
+    			'anotherstaticpath' 	 => 'anotherfilesystemdir'
+			)
+    	)
+	); 
 
 Building sacy
 -------------
