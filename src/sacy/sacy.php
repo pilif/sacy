@@ -326,6 +326,24 @@ class CacheRenderer {
         return $output;
     }
 
+    private function content_key_for_mtime_key($key, $work_units){
+        if (!(defined('SACY_USE_CONTENT_BASED_CACHE') && SACY_USE_CONTENT_BASED_CACHE))
+            return $key;
+
+        $cache_key = 'ck-for-mkey-'.$key;
+
+        $ck = $this->fragment_cache->get($cache_key);
+        if (!$ck){
+            $ck = "";
+            foreach($work_units as $f){
+                $ck = md5($ck.md5_file($f['file']));
+            }
+            $ck = "$ck-content";
+            $this->fragment_cache->set($cache_key, $ck);
+        }
+        return $ck;
+    }
+
     private function generate_file_cache($work_units, CacheRenderHandler $rh){
         if (!is_dir(ASSET_COMPILE_OUTPUT_DIR)){
             if (!@mkdir(ASSET_COMPILE_OUTPUT_DIR, 0755, true)){
@@ -351,6 +369,8 @@ class CacheRenderer {
 
         // not using the actual content for quicker access
         $key = md5($max . serialize($idents) . $rh->getConfig()->getDebugMode());
+        $key = $this->content_key_for_mtime_key($key, $work_units);
+
         $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
         $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
 
