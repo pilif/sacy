@@ -1,4 +1,4 @@
-Version 0.4 (2012-??-??):
+Version 0.4 (2013-??-??):
  - Support for eco templates
  - Also write statically precompressed files for use with MultiViews
    in Apache or gzip_static in nginx
