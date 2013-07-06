@@ -7,6 +7,7 @@ Version 0.4 (2012-??-??):
  - Errors while processing files are only written to the output.
    No more smarty errors are triggered.
  - Require PHP 5.3
+ - Support for libsass based in-process scss processing
 
 Version 0.3.1 (2012-04-26):
  - Restore 5.2 compatibility (thanks @snaxor)

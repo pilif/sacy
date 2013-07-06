@@ -542,8 +542,10 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $res[] = 'text/x-less';
         if (class_exists('SassParser') || ExternalProcessorRegistry::typeIsSupported('text/x-sass'))
             $res = array_merge($res, array('text/x-sass', 'text/x-scss'));
+        if (PhpSassSacy::isAvailable())
+            $res[] = 'text/x-scss';
 
-        return $res;
+        return array_unique($res);
     }
 
     function getFileExtension() { return '.css'; }
@@ -590,7 +592,9 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 $less->importDir = dirname($source_file).'/'; #lessphp concatenates without a /
                 $css = $less->parse($css);
             }
-            if (in_array($work_unit['type'], array('text/x-scss', 'text/x-sass'))){
+            if (PhpSassSacy::isAvailable() && $work_unit['type'] == 'text/x-scss'){
+                $css = PhpSassSacy::compile($source_file, array(dirname($source_file)));
+            }elseif (in_array($work_unit['type'], array('text/x-scss', 'text/x-sass'))){
                 $config = array(
                     'cache' => false, // no need. WE are the cache!
                     'debug_info' => $debug,

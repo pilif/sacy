@@ -114,6 +114,7 @@ $stub ='<?php Phar::interceptFileFuncs();
     Phar::mapPhar("sacy.phar");
     include("phar://sacy.phar/sacy/ext-translators.php");
     include("phar://sacy.phar/sacy/fragment-cache.php");
+    include("phar://sacy.phar/sacy/phpsass.php");
     include("phar://sacy.phar/sacy/sacy.php");
     '.
     de_phptag(file_get_contents($srcdir.DIRECTORY_SEPARATOR.'block.asset_compile.php')).

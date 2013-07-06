@@ -492,7 +492,15 @@ trivial file based cache.
 
 ### Tool configuration
 
-By default, sacy will use pure PHP implementations for all of the
+If you have loaded [my fork](https://github.com/sensational/sassphp) of
+[sassphp](https://github.com/jamierumbelow/sassphp), then the extension will
+be used to transform .scss files. The advantage of using the extension is that
+the compilation is done in native code and in-process. You won't get any
+faster .scss compilation than that.
+
+The extension is currently based on [libsass](https://github.com/hcatlin/libsass) 1.0
+
+Otherwise, by default, sacy will use pure PHP implementations for all of the
 transformations it supports. This has the advantage that sacy will work on any
 webserver - even on shared hosting environments.
 
