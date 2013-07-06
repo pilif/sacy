@@ -550,6 +550,43 @@ I'm not saying it's impossible - it's just much harder.
 At the moment, CSS minification is done only using the native PHP CSSMin, as
 this is as "official" as all the other tools.
 
+### File names
+
+In its default configuration, sacy will write a cache file which is named
+based on the maximum mtime of all files in a batch. This has the advantage
+that it's comparably cheap to calculate and it doesn't require any additional
+infrastructure.
+
+However, once you start adding multiple servers compiling assets for the same
+application (load balancer in front of multiple app servers), you will run
+into an issue that you will need to synchonize the mtime on all app servers
+or sacy will generate different file names on different servers.
+
+This won't work very well with load balancers as the request for an asset
+might be hitting a different machine than the machine which has generated
+the asset to begin with.
+
+In the end, the only option to solve this issue in sacy's default configuration
+is to store the asset cache on a distributed file system.
+
+However, if you define SACY_USE_CONTENT_BASED_CACHE, sacy will name the
+generated asset files based on the actual contents of the files it processes.
+
+This process is comparably expensive (`md5_file()`), so you don't want
+to do it for every request hitting your application.
+
+This is why sacy, in SACY_USE_CONTENT_BASED_CACHE mode still uses an
+mtime based name, but then looks up a content based key in the fragment
+cache (see above). Only if it doesn't find a precached key, it will
+hit the file system to do the `md5_file()` operation.
+
+Thus, it's **highly recommended** to use SACY_USE_CONTENT_BASED_CACHE ony
+if you have configured your fragment cache to something faster than the
+built-in filesystem cache.
+
+This also is the reason why SACY_USE_CONTENT_BASED_CACHE is off by
+default.
+
 
 ### Web servers
 
