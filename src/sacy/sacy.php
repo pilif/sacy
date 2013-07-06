@@ -351,8 +351,8 @@ class CacheRenderer {
             }
         }
 
-        $f = function($f) use ($rh){
-            return basename($f["file"], "'.$rh->getFileExtension().'");
+        $f = function($f){
+            return pathinfo($f['file'], PATHINFO_FILENAME);
         };
 
         $ident = implode('-', array_map($f, $work_units));
