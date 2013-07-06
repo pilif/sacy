@@ -613,7 +613,7 @@ first time.
 Licence
 -------
 
-sacy is © 2009-2012 by Philip Hofstetter <phofstetter@sensational.ch> and is
+sacy is © 2009-2013 by Philip Hofstetter <phofstetter@sensational.ch> and is
 licensed under the MIT License which is reprinted in the LICENSE file
 accompanying this distribution.
 
