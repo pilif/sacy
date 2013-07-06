@@ -1,4 +1,6 @@
 Version 0.4 (2013-??-??):
+ - Support for content-based file names
+ - Support for libsass based in-process scss processing
  - Support for eco templates
  - Also write statically precompressed files for use with MultiViews
    in Apache or gzip_static in nginx
@@ -7,7 +9,6 @@ Version 0.4 (2013-??-??):
  - Errors while processing files are only written to the output.
    No more smarty errors are triggered.
  - Require PHP 5.3
- - Support for libsass based in-process scss processing
 
 Version 0.3.1 (2012-04-26):
  - Restore 5.2 compatibility (thanks @snaxor)
