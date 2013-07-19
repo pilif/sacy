@@ -337,6 +337,9 @@ class CacheRenderer {
             $ck = "";
             foreach($work_units as $f){
                 $ck = md5($ck.md5_file($f['file']));
+                foreach($f['additional_files'] as $af){
+                    $ck = md5($ck.md5_file($af));
+                }
             }
             $ck = "$ck-content";
             $this->fragment_cache->set($cache_key, $ck);
@@ -360,11 +363,16 @@ class CacheRenderer {
             $ident = 'many-files-'.md5($ident);
         $max = 0;
         $idents = array();
-        foreach($work_units as $f){
+        foreach($work_units as &$f){
             $idents[] = array(
                 $f['group'], $f['file'], $f['type'], $f['tag']
             );
+            $f['additional_files'] = $rh->getAdditionalFiles($f);
             $max = max($max, filemtime($f['file']));
+            foreach($f['additional_files'] as $af){
+                $max = max($max, filemtime($af));
+            }
+            unset($f);
         }
 
         // not using the actual content for quicker access
@@ -462,6 +470,7 @@ interface CacheRenderHandler{
     function getFileExtension();
     static function willTransformType($type);
     function writeHeader($fh, $work_units);
+    function getAdditionalFiles($work_unit);
     function processFile($fh, $work_unit);
     function getOutput($work_unit);
     function getConfig();
@@ -553,6 +562,9 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         fwrite($fh, $this->getOutput($work_unit));
     }
 
+    function getAdditionalFiles($work_unit) {
+        return [];
+    }
 }
 
 class CssRenderHandler extends ConfiguredRenderHandler{
@@ -641,5 +653,53 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 'currentDir' => dirname($source_file)
             ));
         }
+    }
+
+    private function extract_import_file($parent_file, $cssdata){
+        $f = null;
+        if (preg_match('#^\s*url\((["\'])([^\1]+)\1#', $cssdata, $matches)){
+            $f = $matches[2];
+        }elseif(preg_match('#^\s*(["\'])([^\1]+)\1#', $cssdata, $matches)){
+            $f = $matches[2];
+        }
+        $path_info = pathinfo($parent_file);
+        if (in_array(strtolower($path_info['extension']), ['scss', 'sass', 'less'])){
+            $ext = preg_quote($path_info['extension'], '#');
+            if (!preg_match("#.$ext\$#", $f))
+                $f .= ".".$path_info['extension'];
+
+            $mixin = $path_info['dirname'].DIRECTORY_SEPARATOR."_$f";
+            if (file_exists($mixin)) return $mixin;
+        }
+
+        $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
+        return file_exists($f) ? $f : null;
+    }
+
+    private function find_imports($file, $level){
+        $path_info = pathinfo($file);
+        if (!in_array(strtolower($path_info['extension']), ['scss', 'sass', 'less']))
+            return [];
+
+        if ($level > 10) throw new Exception("CSS Include nesting level of $level too deep");
+        $fh = fopen($file, 'r');
+        $res = [];
+        while(false !== ($line = fgets($fh))){
+            if (preg_match('#^\s*$#', $line)) continue;
+            if (preg_match('#^\s*@import(.*)$#', $line, $matches)){
+                $f = $this->extract_import_file($file, $matches[1]);
+                if ($f){
+                    $res[] = $f;
+                    $res = array_merge($res, $this->find_imports($f, ++$level));
+                }
+            }
+        }
+        fclose($fh);
+        return $res;
+    }
+
+    function getAdditionalFiles($work_unit) {
+        $level = 0;
+        return $this->find_imports($work_unit['file'], $level);
     }
 }

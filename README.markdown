@@ -625,11 +625,16 @@ means that sacy will fail in cases where IE's conditional comments are used to
 fetch additional files. For now, put these conditional comments outside of a
 `{asset_compile}` tag
 
-* sacy does not contain a CSS parser. It does rewrite any relative url() it
-finds inside the CSS-file to absolute ones though, but it does not follow
-@import directives. This means that while @import will not break, you will
-lose the compilation feature as `@import`ed files get loaded the traditional
-way
+* sacy does contain very minimal support for `@import` in SASS/SCSS files in
+that it tracks dependent files before running the sass compiler. That means
+that a new compilation process is started whenever a dependent file has
+changed.
+
+  However, sacy has no support for @import in pure CSS files and as @import
+must appear at the beginning for a CSS file, sacyfying CSS files that make
+use of @import is probably not practical, so if you want to use @import,
+it's recommended to just use SASS
+
 
 
 Acknowledgements

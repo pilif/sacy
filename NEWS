@@ -1,4 +1,5 @@
 Version 0.4 (2013-??-??):
+ - Support for tracking depending files in SCSS/SASS and LESS files
  - Support for content-based file names
  - Support for libsass based in-process scss processing
  - Support for eco templates
