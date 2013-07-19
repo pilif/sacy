@@ -655,7 +655,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         }
     }
 
-    private function extract_import_file($parent_file, $cssdata){
+    private function extract_import_file($parent_type, $parent_file, $cssdata){
         $f = null;
         if (preg_match('#^\s*url\((["\'])([^\1]+)\1#', $cssdata, $matches)){
             $f = $matches[2];
@@ -663,22 +663,26 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $f = $matches[2];
         }
         $path_info = pathinfo($parent_file);
-        if (in_array(strtolower($path_info['extension']), ['scss', 'sass', 'less'])){
+        if (in_array($parent_type, ['text/x-scss', 'text/x-sass'])){
             $ext = preg_quote($path_info['extension'], '#');
             if (!preg_match("#.$ext\$#", $f))
                 $f .= ".".$path_info['extension'];
 
             $mixin = $path_info['dirname'].DIRECTORY_SEPARATOR."_$f";
             if (file_exists($mixin)) return $mixin;
+        }elseif($parent_type == 'text/x-less'){
+            // less only inlines @import's of .less files (see: http://lesscss.org/#-importing)
+            if (!preg_match('#\.less$', $f)) return null;
+        }else{
+            return null;
         }
 
         $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
         return file_exists($f) ? $f : null;
     }
 
-    private function find_imports($file, $level){
-        $path_info = pathinfo($file);
-        if (!in_array(strtolower($path_info['extension']), ['scss', 'sass', 'less']))
+    private function find_imports($type, $file, $level){
+        if (!in_array($type, ['text/x-scss', 'text/x-sass', 'text/x-less']))
             return [];
 
         if ($level > 10) throw new Exception("CSS Include nesting level of $level too deep");
@@ -687,10 +691,10 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         while(false !== ($line = fgets($fh))){
             if (preg_match('#^\s*$#', $line)) continue;
             if (preg_match('#^\s*@import(.*)$#', $line, $matches)){
-                $f = $this->extract_import_file($file, $matches[1]);
+                $f = $this->extract_import_file($type, $file, $matches[1]);
                 if ($f){
                     $res[] = $f;
-                    $res = array_merge($res, $this->find_imports($f, ++$level));
+                    $res = array_merge($res, $this->find_imports($type, $f, ++$level));
                 }
             }
         }
@@ -700,6 +704,6 @@ class CssRenderHandler extends ConfiguredRenderHandler{
 
     function getAdditionalFiles($work_unit) {
         $level = 0;
-        return $this->find_imports($work_unit['file'], $level);
+        return $this->find_imports($work_unit['type'], $work_unit['file'], $level);
     }
 }
