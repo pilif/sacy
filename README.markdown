@@ -628,7 +628,7 @@ fetch additional files. For now, put these conditional comments outside of a
 * sacy does contain very minimal support for `@import` in SASS/SCSS files in
 that it tracks dependent files before running the sass compiler. That means
 that a new compilation process is started whenever a dependent file has
-changed.
+changed (the maximum allowed nesting level is 10 imports).
 
   However, sacy has no support for @import in pure CSS files and as @import
 must appear at the beginning for a CSS file, sacyfying CSS files that make
