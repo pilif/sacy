@@ -682,6 +682,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
     }
 
     private function find_imports($type, $file, $level){
+        $level++;
         if (!in_array($type, ['text/x-scss', 'text/x-sass', 'text/x-less']))
             return [];
 
@@ -694,7 +695,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 $f = $this->extract_import_file($type, $file, $matches[1]);
                 if ($f){
                     $res[] = $f;
-                    $res = array_merge($res, $this->find_imports($type, $f, ++$level));
+                    $res = array_merge($res, $this->find_imports($type, $f, $level));
                 }
             }
         }
