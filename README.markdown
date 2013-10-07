@@ -1,6 +1,14 @@
 Smarty Asset Compiler (sacy)
 ============================
 
+be careful: the built phar file will cause issues with the new
+opcache that's bundled with 5.5 and later due to
+[this issue](https://github.com/zendtech/ZendOptimizerPlus/issues/115#issuecomment-25612769)) in opcache.
+
+A workaround for the issue will be provided at a later time, but until
+then, per application server (Apache, FPM master) only one version of
+the file might exist.
+
 Sacy turns
 
     {asset_compile}
