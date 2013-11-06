@@ -631,6 +631,15 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         if ($this->collecting){
             $content = @file_get_contents($work_unit['file']);
             if (!$content) $content = "/* error accessing file {$work_unit['file']} */";
+
+            $content = \Minify_CSS_UriRewriter::rewrite(
+                $content,
+                dirname($work_unit['file']),
+                $_SERVER['DOCUMENT_ROOT'],
+                array(),
+                true
+            );
+
             $this->to_process[] = array(
                 'file' => $work_unit['file'],
                 'content' => $content,

@@ -96,10 +96,11 @@ class Minify_CSS_UriRewriter {
      * array('//symlink' => '/real/target/path') // unix
      * array('//static' => 'D:\\staticStorage')  // Windows
      * </code>
-     * 
+     *
+     * @param bool $leave_imports don't rewrite imports. Only touch URLs
      * @return string
      */
-    public static function rewrite($css, $currentDir, $docRoot = null, $symlinks = array()) 
+    public static function rewrite($css, $currentDir, $docRoot = null, $symlinks = array(), $leave_imports = false)
     {
         self::$_docRoot = self::_realpath(
             $docRoot ? $docRoot : $_SERVER['DOCUMENT_ROOT']
@@ -126,8 +127,9 @@ class Minify_CSS_UriRewriter {
         $css = self::_trimUrls($css);
         
         // rewrite
-        $css = preg_replace_callback('/@import\\s+([\'"])(.*?)[\'"]/'
-            ,array(self::$className, '_processUriCB'), $css);
+        if (!$leave_imports)
+            $css = preg_replace_callback('/@import\\s+([\'"])(.*?)[\'"]/'
+                ,array(self::$className, '_processUriCB'), $css);
         $css = preg_replace_callback('/url\\(\\s*([^\\)\\s]+)\\s*\\)/'
             ,array(self::$className, '_processUriCB'), $css);
 
