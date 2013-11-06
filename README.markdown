@@ -222,6 +222,15 @@ like so:
 Sacy uses the mime-types you provide with the type attribute to invoke the
 correct transformer before writing the file to the cache.
 
+If you are translating .sass and .scss files, you can use the `merge_tags`
+parameter to the ´{asset_compile}´ tag. If that is set, sacy will first merge
+all sass/scss files (of the same type) together and only then transform them
+to css.
+
+This means that variables and mixins defined in one file will be available
+in another file. It also means that sacy has to do a bit of magic when
+assembling the load path, so be prepared for surprising results.
+
 #### Note
 
 In general, it's not good practice to use inline `script`- or `style`-tags, so

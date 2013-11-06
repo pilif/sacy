@@ -144,8 +144,10 @@ class WorkUnitExtractor{
             if ($path === false) return false;
         }
 
+        $group = serialize($this->_cfg->get('merge_tags') ? [$attrs['media'], $attrs['type']] : [$attrs['media']]);
+
         return array(
-            'group' => $attrs['media'],
+            'group' => $group,
             'file' => $path,
             'content' => $content,
             'type' => $attrs['type']
@@ -215,6 +217,7 @@ class Config{
         $this->params['query_strings'] = defined('SACY_QUERY_STRINGS') ? SACY_QUERY_STRINGS : 'ignore';
         $this->params['write_headers'] = defined('SACY_WRITE_HEADERS') ? SACY_WRITE_HEADERS : true;
         $this->params['debug_toggle']  = defined('SACY_DEBUG_TOGGLE') ? SACY_DEBUG_TOGGLE : '_sacy_debug';
+        $this->params['merge_tags'] = false;
 
         if (is_array($params))
             $this->setParams($params);
@@ -233,14 +236,14 @@ class Config{
 
     public function setParams($params){
         foreach($params as $key => $value){
-            if (!in_array($key, array('query_strings', 'write_headers', 'debug_toggle')))
+            if (!in_array($key, array('merge_tags', 'query_strings', 'write_headers', 'debug_toggle')))
                 throw new Exception("Invalid option: $key");
         }
         if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
             throw new Exception("Invalid setting for query_strings: ".$params['query_strings']);
         if (isset($params['write_headers']) && !in_array($params['write_headers'], array(true, false), true))
             throw new Exception("Invalid setting for write_headers: ".$params['write_headers']);
-
+        $params['merge_tags'] = !!$params['merge_tags'];
 
         $this->params = array_merge($this->params, $params);
     }
@@ -286,7 +289,11 @@ class CacheRenderer {
 
     private function render_style_units($work_units, $cat){
         // we can do this because tags are grouped by the presence of a file or not
-        $cs = $cat ? sprintf(' media="%s"', htmlspecialchars($cat, ENT_QUOTES)) : '';
+        $cs = '';
+        if ($cat){
+            $c = unserialize($cat);
+            $cs = $cat ? sprintf(' media="%s"', htmlspecialchars($c[0], ENT_QUOTES)) : '';
+        }
         if ($work_units[0]['file']){
             if ($res = $this->generate_file_cache($work_units, new CssRenderHandler($this->_cfg, $this->_source_file))){
                 $res = sprintf('<link rel="stylesheet" type="text/css"%s href="%s" />'."\n", $cs, htmlspecialchars($res, ENT_QUOTES));
@@ -309,6 +316,7 @@ class CacheRenderer {
                 $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->_source_file))
             );
         }
+        return '';
     }
 
     private function generate_content_cache($work_units, CacheRenderHandler $rh){
@@ -433,6 +441,11 @@ class CacheRenderer {
             $rh->writeHeader($fhc, $files);
 
         $res = true;
+        $merge = !!$rh->getConfig()->get('merge_tags');
+
+        if ($merge)
+            $rh->startWrite();
+
         foreach($files as $file){
             try{
                 $rh->processFile($fhc, $file);
@@ -446,7 +459,11 @@ class CacheRenderer {
                 $res = false;
                 break;
             }
+
         }
+
+        if ($merge)
+            $rh->endWrite($fhc);
 
         $ts = time();
         if (function_exists('gzencode')){
@@ -472,6 +489,8 @@ interface CacheRenderHandler{
     function writeHeader($fh, $work_units);
     function getAdditionalFiles($work_unit);
     function processFile($fh, $work_unit);
+    function startWrite();
+    function endWrite($fh);
     function getOutput($work_unit);
     function getConfig();
 }
@@ -496,6 +515,11 @@ abstract class ConfiguredRenderHandler implements CacheRenderHandler{
     static public function willTransformType($type){
         return false;
     }
+
+    function startWrite(){}
+
+    function endWrite($fh){}
+
 }
 
 class JavaScriptRenderHandler extends ConfiguredRenderHandler{
@@ -568,6 +592,9 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
 }
 
 class CssRenderHandler extends ConfiguredRenderHandler{
+    private $to_process = [];
+    private $collecting = false;
+
     static function supportedTransformations(){
         $res = array('', 'text/css');
         if (class_exists('lessc') || ExternalProcessorRegistry::typeIsSupported('text/x-less'))
@@ -597,10 +624,41 @@ class CssRenderHandler extends ConfiguredRenderHandler{
     }
 
     function processFile($fh, $work_unit){
-        if ($this->getConfig()->get('write_headers'))
-           fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+        // for now: only support collecting for scss and sass
+        if (!in_array($work_unit['type'], array('text/x-scss', 'text/x-sass'))){
+            $this->collecting = false;
+        }
+        if ($this->collecting){
+            $content = @file_get_contents($work_unit['file']);
+            if (!$content) $content = "/* error accessing file {$work_unit['file']} */";
+            $this->to_process[] = array(
+                'file' => $work_unit['file'],
+                'content' => $content,
+                'type' => $work_unit['type'],
+            );
+        }else{
+            if ($this->getConfig()->get('write_headers'))
+               fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
 
-        fwrite($fh, $this->getOutput($work_unit));
+            fwrite($fh, $this->getOutput($work_unit));
+        }
+    }
+
+    function endWrite($fh){
+        if (!$this->collecting) return;
+        $content = '';
+        $incpath = [];
+        foreach($this->to_process as $job){
+            $content .= $job['content'];
+            $incpath[] = dirname($job['file']);
+        }
+
+        fwrite($fh, $this->getOutput(array(
+            'content' => $content,
+            'type' => $this->to_process[0]['type'],
+            'paths' => $incpath
+        )));
+
     }
 
     function getOutput($work_unit){
@@ -616,8 +674,11 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         }
 
         if (ExternalProcessorRegistry::typeIsSupported($work_unit['type'])){
+            $opts = array();
+            if ($work_unit['paths'])
+                $opts['library_path'] = $work_unit['paths'];
             $css = ExternalProcessorRegistry::getTransformerForType($work_unit['type'])
-                ->transform($css, $source_file);
+                ->transform($css, $source_file, $opts);
         }else{
             if ($work_unit['type'] == 'text/x-less'){
                 $less = new \lessc();
@@ -625,13 +686,13 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 $css = $less->parse($css);
             }
             if (PhpSassSacy::isAvailable() && $work_unit['type'] == 'text/x-scss'){
-                $css = PhpSassSacy::compile($source_file, array(dirname($source_file)));
+                $css = PhpSassSacy::compile($source_file, $work_unit['paths'] ?: array(dirname($source_file)));
             }elseif (in_array($work_unit['type'], array('text/x-scss', 'text/x-sass'))){
                 $config = array(
                     'cache' => false, // no need. WE are the cache!
                     'debug_info' => $debug,
                     'line' => $debug,
-                    'load_paths' => array(dirname($source_file)),
+                    'load_paths' => $work_unit['paths'] ?: array(dirname($source_file)),
                     'filename' => $source_file,
                     'quiet' => true,
                     'style' => $debug ? 'nested' : 'compressed'
@@ -706,5 +767,10 @@ class CssRenderHandler extends ConfiguredRenderHandler{
     function getAdditionalFiles($work_unit) {
         $level = 0;
         return $this->find_imports($work_unit['type'], $work_unit['file'], $level);
+    }
+
+    function startWrite(){
+        $this->to_process = [];
+        $this->collecting = true;
     }
 }
