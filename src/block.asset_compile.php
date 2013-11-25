@@ -71,7 +71,7 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             // the moment the category changes, render all we have so far
             // this makes it IMPERATIVE to keep links of the same category
             // together.
-            if ($curr_cat != $cg || ($cfg->getDebugMode() == 3 && count($render))){
+            if ($curr_cat != $cg || (!$cfg->get('merge_tags') && $cfg->getDebugMode() == 3 && count($render))){
                 $render_order = array_reverse($render);
                 $res = $renderer->renderWorkUnits($work_units[$i-1]['tag'], $work_units[$i-1]['group'], $render_order);
                 if ($res === false){

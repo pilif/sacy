@@ -1,6 +1,6 @@
 Version 0.4 (2013-??-??):
  - Support for merging consecutive SCSS/SASS files before compilation
-   (merge_tags=true)
+   (merge_tags=true). Will disable debug mode 3
  - Support for tracking depending files in SCSS/SASS and LESS files
  - Support for content-based file names
  - Support for libsass based in-process scss processing

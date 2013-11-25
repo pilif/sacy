@@ -446,7 +446,8 @@ Configuration
 
  "3" will make sacy only do transformations (less, sass, scss), but leave
  all other files alone and write one output file per input.
- Use this for development.
+ Use this for development. This option is not available if you have enabled
+ asset merging with `merge_tags`.
 
  debug_toggle is set to `_sacy_debug` per default. If it's set to `false` sacy
  will never do any debug handling regardless of the request.
