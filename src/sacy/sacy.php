@@ -272,6 +272,10 @@ class CacheRenderer {
         }
     }
 
+    function allowMergedTransformOnly($tag){
+        return $tag == 'script';
+    }
+
     function renderWorkUnits($tag, $cat, $work_units){
         switch($tag){
             case 'link':
