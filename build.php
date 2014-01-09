@@ -59,8 +59,9 @@ $srcdir = implode(DIRECTORY_SEPARATOR, array(__DIR__, 'src'));
 $outfile = 'block.asset_compile.php';
 $outdir = isset($args['o']) ? $args['o'] : implode(DIRECTORY_SEPARATOR, array(__DIR__, 'build'));
 $target = implode(DIRECTORY_SEPARATOR, array($outdir, 'temp.phar'));
+if (file_exists($target)) unlink($target);
 
-$arch = new Phar($target, 0, 'sacy.phar');
+$arch = new ContentHashedPhar($target, 0, 'sacy.phar');
 $arch->startBuffering();
 $arch->buildFromIterator(new SacySupportFilesFilter(
             new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcdir), RecursiveIteratorIterator::SELF_FIRST),
@@ -106,17 +107,19 @@ if ($args['with-lessphp']){
 
 $arch->stopBuffering();
 
+$opcache_bug_workaround_name = sha1($arch->getContentHash().file_get_contents(__FILE__));
+
 if ($comp != Phar::NONE)
     $arch->compressFiles($comp);
 
-$stub ='<?php Phar::interceptFileFuncs();
-    define("____SACY_BUNDLED", 1);
-    Phar::mapPhar("sacy.phar");
-    include("phar://sacy.phar/sacy/ext-translators.php");
-    include("phar://sacy.phar/sacy/fragment-cache.php");
-    include("phar://sacy.phar/sacy/phpsass.php");
-    include("phar://sacy.phar/sacy/sacy.php");
-    '.
+$stub ="<?php Phar::interceptFileFuncs();
+    define('____SACY_BUNDLED', 1);
+    Phar::mapPhar('$opcache_bug_workaround_name.phar');
+    include('phar://$opcache_bug_workaround_name.phar/sacy/ext-translators.php');
+    include('phar://$opcache_bug_workaround_name.phar/sacy/fragment-cache.php');
+    include('phar://$opcache_bug_workaround_name.phar/sacy/phpsass.php');
+    include('phar://$opcache_bug_workaround_name.phar/sacy/sacy.php');
+    ".
     de_phptag(file_get_contents($srcdir.DIRECTORY_SEPARATOR.'block.asset_compile.php')).
     "\n__HALT_COMPILER();";
 $arch->setStub($stub);
@@ -128,6 +131,40 @@ die(0);
 function de_phptag($str){
     return preg_replace('#<\?(php)?|\?>#', '', $str);
 
+}
+
+class ContentHashedPhar extends Phar {
+    private $hash;
+
+    function __construct($fname, $flags){
+        parent::__construct($fname, $flags);
+        $this->hash = null;
+    }
+
+    function buildFromIterator(Iterator $it, $base_dir=null){
+        foreach($it as $f){
+            $this->addFileToHash($f);
+        }
+        parent::buildFromIterator($it, $base_dir);
+    }
+
+    function offsetSet($k, $v){
+        $this->addFileToHash($v);
+        parent::offsetSet($k, $v);
+    }
+
+    function getContentHash(){
+        return $this->hash;
+    }
+
+    function addFile($file, $localname=null){
+        $this->addFile($file);
+        parent::addFile($file, $localname);
+    }
+
+    private function addFileToHash($f){
+        $this->hash = sha1($this->hash . file_get_contents($f));
+    }
 }
 
 class SacySkipSubdirsFilter extends RecursiveFilterIterator{
