@@ -1,4 +1,5 @@
 Version 0.4 (2013-??-??):
+ - Support for [JSX](http://facebook.github.io/react/docs/jsx-in-depth.html)
  - Support for merging consecutive SCSS/SASS files before compilation
    (merge_tags=true). Will disable debug mode 3
  - Support for tracking depending files in SCSS/SASS and LESS files

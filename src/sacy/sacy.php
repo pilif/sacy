@@ -536,6 +536,9 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         if (ExternalProcessorRegistry::typeIsSupported('text/x-eco'))
             $supported[] = 'text/x-eco';
 
+        if (ExternalProcessorRegistry::typeIsSupported('text/x-jsx'))
+            $supported[] = 'text/x-jsx';
+
         return $supported;
     }
 
@@ -573,7 +576,11 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         } else if ($work_unit['type'] == 'text/x-eco'){
             $eco = ExternalProcessorRegistry::getTransformerForType('text/x-eco');
             $js = $eco->transform($js, $source_file, $work_unit['data']);
+        } else if ($work_unit['type'] == 'text/x-jsx'){
+            $jsx = ExternalProcessorRegistry::getTransformerForType('text/x-jsx');
+            $js = $jsx->transform($js, $source_file, $work_unit['data']);
         }
+
         if ($debug){
             return $js;
         }else{

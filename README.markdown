@@ -20,6 +20,7 @@ Sacy turns
     <script type="text/coffeescript" src="/jslib/file2.coffee"></script>
     <script type="text/javascript" src="/jslib/file3.js"></script>
     <script type="text/x-eco" src="/jslib/sometemplate.eco"></script>
+    <script type="text/x-jsx" src="/jslib/somecomponent.jsx"></script>
     {/asset_compile}
 
 into
@@ -557,6 +558,10 @@ define()'ing some constants pointing sacy to the path of the respecive tools:
 - `SACY_TRANSFORMER_ECO` specifies the path to the eco compiler. You can
   install it using `npm install -g eco`, which will likely put the eco
   executable in `/usr/local/bin/eco`.
+
+- `SACY_TRANSFORMER_JSX` specifies the path to the jsx compiler. You can
+  install it using `npm install -g react-tools`, which will likely put the jsx
+  executable in `/usr/local/bin/jsx`.
 
 If you are not sure what you are doing, always install these utilities to
 their global locations. If you install them as a user account, chances are
