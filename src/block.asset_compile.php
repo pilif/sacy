@@ -7,7 +7,7 @@ if (!(defined("ASSET_COMPILE_OUTPUT_DIR") && defined("ASSET_COMPILE_URL_ROOT")))
     throw new sacy\Exception("Failed to initialize because path configuration is not set (ASSET_COMPILE_OUTPUT_DIR and ASSET_COMPILE_URL_ROOT)");
 }
 
-function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
+function smarty_block_asset_compile($params, $content, &$template, &$repeat){
     if (!$repeat){
         // don't shoot me, but all tried using the dom-parser and removing elements
         // ended up with problems due to the annoying DOM API and braindead stuff
@@ -112,6 +112,18 @@ function smarty_block_asset_compile($params, $content, &$smarty, &$repeat){
             $patched_content = substr_replace($patched_content, '', $r['position'], $r['length']);
         }
         $patched_content = substr_replace($patched_content, $res, $m, 0);
+
+        if($block_ref = $cfg->get("block_ref")){
+            $sacy = $template->smarty->getTemplateVars('sacy') ?: array();
+            $rendered_assets = $sacy['rendered_assets'] ?: array();
+            $rendered_assets[$block_ref] = array_merge(
+                $rendered_assets[$block_ref] ?: array(),
+                $renderer->getRenderedAssets()
+            );
+            $sacy['rendered_assets'] = $rendered_assets;
+            $template->smarty->assign('sacy', $sacy);
+        }
+
         return $patched_content;
     }
 }
