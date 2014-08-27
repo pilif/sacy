@@ -123,10 +123,11 @@ class ProcessorSass extends ExternalProcessor{
         if (!is_executable(SACY_TRANSFORMER_SASS)){
             throw new Exception('SACY_TRANSFORMER_SASS defined but not executable');
         }
+        $libpath = $opts['library_path'] ?: [dirname($filename)];
+        $libpath[] = $_SERVER['DOCUMENT_ROOT'] ?: getcwd();
 
-        $path = ($opts['library_path']) ?
-                implode(' ', array_map(function($p){ return '-I '.escapeshellarg($p); }, $opts['library_path'])) :
-                '-I '.escapeshellarg(dirname($filename));
+        $path =
+            implode(' ', array_map(function($p){ return '-I '.escapeshellarg($p); }, array_unique($libpath)));
 
         return sprintf('%s --cache-location=%s -s %s %s',
             SACY_TRANSFORMER_SASS,
