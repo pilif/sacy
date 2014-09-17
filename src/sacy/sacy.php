@@ -236,7 +236,7 @@ class Config{
 
     public function setParams($params){
         foreach($params as $key => $value){
-            if (!in_array($key, array('merge_tags', 'query_strings', 'write_headers', 'debug_toggle')))
+            if (!in_array($key, array('merge_tags', 'query_strings', 'write_headers', 'debug_toggle', 'block_ref')))
                 throw new Exception("Invalid option: $key");
         }
         if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
@@ -257,9 +257,12 @@ class CacheRenderer {
     /** @var FileCache */
     private $fragment_cache;
 
+    private $rendered_bits;
+
     function __construct(Config $config, $source_file){
         $this->_cfg = $config;
         $this->_source_file = $source_file;
+        $this->rendered_bits = array();
 
         $class = defined('SACY_FRAGMENT_CACHE_CLASS') ?
             SACY_FRAGMENT_CACHE_CLASS :
@@ -290,6 +293,10 @@ class CacheRenderer {
         return $this->$fn($work_units, $cat);
     }
 
+    function getRenderedAssets(){
+        return array_reverse($this->rendered_bits);
+    }
+
 
     private function render_style_units($work_units, $cat){
         // we can do this because tags are grouped by the presence of a file or not
@@ -313,12 +320,13 @@ class CacheRenderer {
     private function render_script_units($work_units, $cat){
         if ($work_units[0]['file']){
             if ($res = $this->generate_file_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->_source_file))){
+                $this->rendered_bits[] = array('type' => 'file', 'src' => $res);
                 return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($res, ENT_QUOTES));
             }
         }else{
-            return sprintf('<script type="text/javascript">%s</script>'."\n",
-                $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->_source_file))
-            );
+            $res = $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->_source_file));
+            if($res) $this->rendered_bits[] = array('type' => 'string', 'content' => $res);
+            return sprintf('<script type="text/javascript">%s</script>'."\n", $res);
         }
         return '';
     }
@@ -536,6 +544,9 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         if (ExternalProcessorRegistry::typeIsSupported('text/x-eco'))
             $supported[] = 'text/x-eco';
 
+        if (ExternalProcessorRegistry::typeIsSupported('text/x-jsx'))
+            $supported[] = 'text/x-jsx';
+
         return $supported;
     }
 
@@ -573,7 +584,11 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         } else if ($work_unit['type'] == 'text/x-eco'){
             $eco = ExternalProcessorRegistry::getTransformerForType('text/x-eco');
             $js = $eco->transform($js, $source_file, $work_unit['data']);
+        } else if ($work_unit['type'] == 'text/x-jsx'){
+            $jsx = ExternalProcessorRegistry::getTransformerForType('text/x-jsx');
+            $js = $jsx->transform($js, $source_file, $work_unit['data']);
         }
+
         if ($debug){
             return $js;
         }else{

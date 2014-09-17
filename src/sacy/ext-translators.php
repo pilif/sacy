@@ -157,6 +157,15 @@ class ProcessorLess extends ExternalProcessor{
     }
 }
 
+class ProcessorJSX extends ExternalProcessor{
+    protected function getCommandLine($filename, $opts=array()){
+        if (!is_executable(SACY_TRANSFORMER_JSX)){
+            throw new Exception('SACY_TRANSFORMER_JSX defined but not executable');
+        }
+        return SACY_TRANSFORMER_JSX;
+    }
+}
+
 
 
 if (defined('SACY_COMPRESSOR_UGLIFY')){
@@ -178,4 +187,8 @@ if (defined('SACY_TRANSFORMER_SASS')){
 
 if (defined('SACY_TRANSFORMER_LESS')){
     ExternalProcessorRegistry::registerTransformer('text/x-less', 'sacy\ProcessorLess');
+}
+
+if (defined('SACY_TRANSFORMER_JSX')){
+    ExternalProcessorRegistry::registerTransformer('text/x-jsx', 'sacy\ProcessorJSX');
 }
