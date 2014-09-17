@@ -406,47 +406,51 @@ class CacheRenderer {
             return $pub;
         }
 
-        if (!$this->write_cache($cfile, $work_units, $rh)){
-            /* If something went wrong in here we delete the cache file
-
-               This ensures that on reload, sacy would see that no cached file exists and
-               will retry the process.
-
-               This is helpful for example if you define() one of the external utilities
-               and screw something up in the process.
-            */
-            if (file_exists($cfile)){
-                @unlink($cfile);
-            }
-            return false;
-        }
+        $this->write_cache($cfile, $work_units, $rh);
 
         return $pub;
     }
 
     private function write_cache($cfile, $files, CacheRenderHandler $rh){
-        $lockfile = $cfile.".lock";
-        $fhl = @fopen($lockfile, 'w');
-        if (!$fhl){
-            trigger_error("Cannot create cache-lockfile: $lockfile", E_USER_WARNING);
-            return false;
+        $tmpfile = $this->write_cache_tmpfile($cfile, $files, $rh);
+
+        if ($tmpfile) {
+            $ts = time();
+
+            $this->write_compressed_cache($tmpfile, $cfile, $ts);
+
+            if (rename($tmpfile, $cfile)) {
+                chmod($cfile, 0644);
+                touch($cfile, $ts);
+            } else {
+                trigger_error("Cannot write file: $cfile", E_USER_WARNING);
+            }
         }
-        $wb = false;
-        if (!@flock($fhl, LOCK_EX | LOCK_NB, $wb)){
-            trigger_error("Canot lock cache-lockfile: $lockfile", E_USER_WARNING);
-            return false;
+
+        return !!$tmpfile;
+    }
+
+    private function write_compressed_cache($tmpfile, $cfile, $ts){
+        if (!function_exists('gzencode')) return;
+
+        $tmp_compressed = "$tmpfile.gz";
+        file_put_contents($tmp_compressed, gzencode(file_get_contents($tmpfile), 9));
+
+        $compressed = "$cfile.gz";
+        if (rename($tmp_compressed, $compressed)) {
+            touch($compressed, $ts);
+        }else{
+            trigger_error("Cannot write compressed file: $compressed", E_USER_WARNING);
         }
-        if ($wb){
-            // another process is writing the cache. Let's just return false
-            // the caller will leave the CSS unaltered
-            return false;
-        }
-        $fhc = @fopen($cfile, 'w+');
+    }
+
+    private function write_cache_tmpfile($cfile, $files, CacheRenderHandler $rh){
+        $tmpfile = tempnam(dirname($cfile), $cfile);
+
+        $fhc = @fopen($tmpfile, 'w+');
         if (!$fhc){
-            trigger_error("Cannot open cache file: $cfile", E_USER_WARNING);
-            fclose($fhl);
-            unlink($lockfile);
-            return false;
+            trigger_error("Cannot write to temporary file: $tmpfile", E_USER_WARNING);
+            return null;
         }
 
         if ($rh->getConfig()->get('write_headers'))
@@ -477,19 +481,9 @@ class CacheRenderer {
         if ($merge)
             $rh->endWrite($fhc);
 
-        $ts = time();
-        if (function_exists('gzencode')){
-            $enc = "$cfile.gz";
-            fseek($fhc, 0, SEEK_SET);
-            file_put_contents($enc, gzencode(stream_get_contents($fhc), 9));
-            touch($enc, $ts);
-        }
-
         fclose($fhc);
-        touch($cfile, $ts);
-        fclose($fhl);
-        unlink($lockfile);
-        return $res;
+
+        return $res ? $tmpfile : null;
     }
 
 }
