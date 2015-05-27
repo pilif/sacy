@@ -306,11 +306,11 @@ class CacheRenderer {
             $cs = $cat ? sprintf(' media="%s"', htmlspecialchars($c[0], ENT_QUOTES)) : '';
         }
         if ($work_units[0]['file']){
-            if ($res = $this->generate_file_cache($work_units, new CssRenderHandler($this->_cfg, $this->_source_file))){
+            if ($res = $this->generate_file_cache($work_units, new CssRenderHandler($this->_cfg, $this->fragment_cache, $this->_source_file))){
                 $res = sprintf('<link rel="stylesheet" type="text/css"%s href="%s" />'."\n", $cs, htmlspecialchars($res, ENT_QUOTES));
             }
         }else{
-            $res = $this->generate_content_cache($work_units, new CssRenderHandler($this->_cfg, $this->_source_file));
+            $res = $this->generate_content_cache($work_units, new CssRenderHandler($this->_cfg, $this->fragment_cache, $this->_source_file));
             $res = sprintf('<style type="text/css"%s>%s</style>'."\n", $cs, $res);
         }
         return $res;
@@ -319,12 +319,12 @@ class CacheRenderer {
 
     private function render_script_units($work_units, $cat){
         if ($work_units[0]['file']){
-            if ($res = $this->generate_file_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->_source_file))){
+            if ($res = $this->generate_file_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->fragment_cache, $this->_source_file))){
                 $this->rendered_bits[] = array('type' => 'file', 'src' => $res);
                 return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($res, ENT_QUOTES));
             }
         }else{
-            $res = $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->_source_file));
+            $res = $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->fragment_cache, $this->_source_file));
             if($res) $this->rendered_bits[] = array('type' => 'string', 'content' => $res);
             return sprintf('<script type="text/javascript">%s</script>'."\n", $res);
         }
@@ -387,8 +387,9 @@ class CacheRenderer {
             $idents[] = array(
                 $f['group'], $f['file'], $f['type'], $f['tag']
             );
+            $f['mtime'] = filemtime($f['file']);
             $f['additional_files'] = $rh->getAdditionalFiles($f);
-            $max = max($max, filemtime($f['file']));
+            $max = max($max, $f['mtime']);
             foreach($f['additional_files'] as $af){
                 $max = max($max, filemtime($af));
             }
@@ -489,7 +490,7 @@ class CacheRenderer {
 }
 
 interface CacheRenderHandler{
-    function __construct(Config $cfg, $source_file);
+    function __construct(Config $cfg, $fragment_cache, $source_file);
     function getFileExtension();
     static function willTransformType($type);
     function writeHeader($fh, $work_units);
@@ -504,10 +505,12 @@ interface CacheRenderHandler{
 abstract class ConfiguredRenderHandler implements CacheRenderHandler{
     private $_cfg;
     private $_source_file;
+    private $_cache;
 
-    function __construct(Config $cfg, $source_file){
+    function __construct(Config $cfg, $fragment_cache, $source_file){
         $this->_cfg = $cfg;
         $this->_source_file = $source_file;
+        $this->_cache = $fragment_cache;
     }
 
     protected function getSourceFile(){
@@ -516,6 +519,13 @@ abstract class ConfiguredRenderHandler implements CacheRenderHandler{
 
     public function getConfig(){
         return $this->_cfg;
+    }
+
+    /**
+     * @return FileCache
+     */
+    protected function getCache(){
+        return $this->_cache;
     }
 
     static public function willTransformType($type){
@@ -605,6 +615,7 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
 }
 
 class CssRenderHandler extends ConfiguredRenderHandler{
+    private $depcache = [];
     private $to_process = [];
     private $collecting = false;
 
@@ -770,8 +781,25 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             return [];
 
         if ($level > 10) throw new Exception("CSS Include nesting level of $level too deep");
-        $fh = fopen($file, 'r');
+
         $res = [];
+
+        $normalized_file = realpath($file);
+        $key = md5("depcache".$normalized_file.$type.filemtime($file));
+
+        $deps = array_key_exists($key, $this->depcache)
+            ? $this->depcache[$key]
+            : $this->getCache()->get($key);
+
+        if (is_array($deps)){
+            foreach($deps as $f){
+                $res[] = $f;
+                $res = array_merge($res, $this->find_imports($type, $f, $level));
+            }
+            return $res;
+        }
+
+        $fh = fopen($file, 'r');
         while(false !== ($line = fgets($fh))){
             if (preg_match('#^\s*$#', $line)) continue;
             if (preg_match('#^\s*@import(.*)$#', $line, $matches)){
@@ -783,11 +811,15 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             }
         }
         fclose($fh);
+
+        $this->depcache[$key] = $res;
+        $this->getCache()->set($key, $res);
         return $res;
     }
 
     function getAdditionalFiles($work_unit) {
         $level = 0;
+
         return $this->find_imports($work_unit['type'], $work_unit['file'], $level);
     }
 

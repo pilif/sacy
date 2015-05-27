@@ -7,7 +7,7 @@ class FileCache{
     function __construct(){
         $this->cache_dir = implode(DIRECTORY_SEPARATOR, array(
             ASSET_COMPILE_OUTPUT_DIR,
-            'fragments'
+            'cache'
         ));
         if (!is_dir($this->cache_dir)){
             if (!@mkdir($this->cache_dir, 0755, true)){
@@ -26,7 +26,7 @@ class FileCache{
 
     function get($key){
         $p = $this->key2file($key);
-        return file_exists($p) ? @file_get_contents($p) : null;
+        return file_exists($p) ? @unserialize(file_get_contents($p)) : null;
     }
 
     function set($key, $value){
@@ -34,6 +34,6 @@ class FileCache{
         if (!@mkdir(dirname($p), 0755, true)){
             throw new Exception("Failed to create fragment cache dir: $p");
         }
-        return @file_put_contents($p, $value);
+        return @file_put_contents($p, serialize($value));
     }
 }
