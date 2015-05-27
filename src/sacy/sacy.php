@@ -615,9 +615,39 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
 }
 
 class CssRenderHandler extends ConfiguredRenderHandler{
-    private $depcache = [];
     private $to_process = [];
     private $collecting = false;
+    private $cache_db = null;
+
+    function __construct(Config $cfg, $fragment_cache, $source_file) {
+        parent::__construct($cfg, $fragment_cache, $source_file);
+    }
+
+    private function getDepcache(){
+        if (!extension_loaded('pdo_sqlite')) return null;
+
+        if ($this->cache_db === null) {
+            $cache_file = defined('SACY_DEPCACHE_FILE')
+                ? SACY_DEPCACHE_FILE
+                : implode(DIRECTORY_SEPARATOR, array(
+                    sys_get_temp_dir(),
+                    sprintf('sacy-depcache-%s.sqlite3', md5(ASSET_COMPILE_OUTPUT_DIR))
+                ));
+
+            if (!file_exists($cache_file)) {
+                $pdo = new \PDO("sqlite:$cache_file");
+                $pdo->exec('create table depcache (source text not null, mtime integer not null, depends_on text not null, primary key (source, depends_on))');
+                $pdo->exec('create index idx_source on depcache(source)');
+            } else {
+                $pdo = new \PDO("sqlite:$cache_file");
+            }
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+            $this->cache_db = $pdo;
+        }
+        return $this->cache_db;
+    }
+
 
     static function supportedTransformations(){
         $res = array('', 'text/css');
@@ -762,8 +792,16 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             if (!preg_match("#.$ext\$#", $f))
                 $f .= ".".$path_info['extension'];
 
-            $mixin = $path_info['dirname'].DIRECTORY_SEPARATOR."_$f";
-            if (file_exists($mixin)) return $mixin;
+            $mixin = implode(DIRECTORY_SEPARATOR, [
+                $path_info['dirname'],
+                dirname($f),
+                "_".basename($f)
+            ]);
+
+            if (is_file($mixin)){
+                return $mixin;
+            }
+
         }elseif($parent_type == 'text/x-less'){
             // less only inlines @import's of .less files (see: http://lesscss.org/#-importing)
             if (!preg_match('#\.less$', $f)) return null;
@@ -775,6 +813,30 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         return file_exists($f) ? $f : null;
     }
 
+    private function findCachedDeps($file){
+        $pdo = $this->getDepcache();
+        if (!$pdo) return null;
+
+        $sh = $pdo->prepare('select mtime, depends_on from depcache where source = ?');
+        $sh->execute([$file]);
+
+        $res = null;
+        while(false != ($ra = $sh->fetch())){
+            if ($ra['depends_on'] != ''){
+                if (!file_exists($ra['depends_on'])){
+                    return null;
+                }
+                if (filemtime($ra['depends_on']) != $ra['mtime']){
+                    return null;
+                }
+                $res[] = $ra['depends_on'];
+            }else{
+                $res = [];
+            }
+        }
+        return $res;
+    }
+
     private function find_imports($type, $file, $level){
         $level++;
         if (!in_array($type, ['text/x-scss', 'text/x-sass', 'text/x-less']))
@@ -782,28 +844,23 @@ class CssRenderHandler extends ConfiguredRenderHandler{
 
         if ($level > 10) throw new Exception("CSS Include nesting level of $level too deep");
 
-        $res = [];
-
+        if (!is_file($file)) return [];
         $normalized_file = realpath($file);
-        $key = md5("depcache".$normalized_file.$type.filemtime($file));
 
-        $deps = array_key_exists($key, $this->depcache)
-            ? $this->depcache[$key]
-            : $this->getCache()->get($key);
+        $from_cache = $this->findCachedDeps($normalized_file);
 
-        if (is_array($deps)){
-            foreach($deps as $f){
-                $res[] = $f;
-                $res = array_merge($res, $this->find_imports($type, $f, $level));
-            }
-            return $res;
+        if ($from_cache !== null){
+            return $from_cache;
         }
 
+        $res = [];
         $fh = fopen($file, 'r');
         while(false !== ($line = fgets($fh))){
             if (preg_match('#^\s*$#', $line)) continue;
             if (preg_match('#^\s*@import(.*)$#', $line, $matches)){
                 $f = $this->extract_import_file($type, $file, $matches[1]);
+                if (!$f) continue;
+                $f = realpath($f);
                 if ($f){
                     $res[] = $f;
                     $res = array_merge($res, $this->find_imports($type, $f, $level));
@@ -812,8 +869,23 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         }
         fclose($fh);
 
-        $this->depcache[$key] = $res;
-        $this->getCache()->set($key, $res);
+        $pdo = $this->getDepcache();
+        if ($pdo) {
+            $pdo->beginTransaction();
+            $sh = $pdo->prepare("insert or replace into depcache (source, depends_on, mtime) values (?, ?, ?)");
+            if ($res == []) {
+                // no dependencies beacon
+                $sh->execute([$normalized_file, '', filemtime($normalized_file)]);
+            } else {
+                $dh = $pdo->prepare("delete from depcache where source = ? and depends_on = ''");
+                $dh->execute([$normalized_file]);
+                foreach ($res as $r) {
+                    $sh->execute([$normalized_file, $r, filemtime($r)]);
+                }
+            }
+            $pdo->commit();
+        }
+
         return $res;
     }
 
