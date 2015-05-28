@@ -634,15 +634,19 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                     sprintf('sacy-depcache-%s.sqlite3', md5(ASSET_COMPILE_OUTPUT_DIR))
                 ));
 
-            if (!file_exists($cache_file)) {
-                $pdo = new \PDO("sqlite:$cache_file");
+            $create_tables = !file_exists($cache_file);
+
+            $pdo = new \PDO("sqlite:$cache_file");
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+
+            if ($create_tables) {
                 $pdo->exec('create table depcache (source text not null, mtime integer not null, depends_on text not null, primary key (source, depends_on))');
                 $pdo->exec('create index idx_source on depcache(source)');
             } else {
                 $pdo = new \PDO("sqlite:$cache_file");
             }
-            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+
             $this->cache_db = $pdo;
         }
         return $this->cache_db;
