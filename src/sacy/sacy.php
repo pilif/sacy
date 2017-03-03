@@ -206,7 +206,7 @@ class WorkUnitExtractor{
     }
 }
 
-class Config{
+class Config implements \JsonSerializable {
     private $params;
 
     public function get($key){
@@ -248,6 +248,9 @@ class Config{
         $this->params = array_merge($this->params, $params);
     }
 
+    function jsonSerialize(){
+        return $this->params;
+    }
 }
 
 class CacheRenderer {
@@ -333,7 +336,7 @@ class CacheRenderer {
 
     private function generate_content_cache($work_units, CacheRenderHandler $rh){
         $content = implode("\n", array_map(function($u){ return $u['content']; }, $work_units));
-        $key = md5($content.$this->_cfg->getDebugMode());
+        $key = md5($content.json_encode($this->_cfg));
         if ($d = $this->fragment_cache->get($key)){
             return $d;
         }
@@ -397,7 +400,7 @@ class CacheRenderer {
         }
 
         // not using the actual content for quicker access
-        $key = md5($max . serialize($idents) . $rh->getConfig()->getDebugMode());
+        $key = md5($max . serialize($idents) . json_encode($rh->getConfig()));
         $key = $this->content_key_for_mtime_key($key, $work_units);
 
         $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
