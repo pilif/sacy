@@ -126,13 +126,20 @@ class ProcessorSass extends ExternalProcessor{
         $libpath = $opts['library_path'] ?: [dirname($filename)];
         $libpath[] = $_SERVER['DOCUMENT_ROOT'] ?: getcwd();
 
+        $plugins = implode(' ', (is_array($opts['plugin_files']))
+            ? array_filter(array_map(function($f){
+                if (!is_file($f)) return null;
+                return sprintf('-r %s', escapeshellarg($f));
+            }, $opts['plugin_files'])) : []);
+
         $path =
             implode(' ', array_map(function($p){ return '-I '.escapeshellarg($p); }, array_unique($libpath)));
 
-        return sprintf('%s --cache-location=%s -s %s %s',
+        return sprintf('%s --cache-location=%s -s %s %s %s',
             SACY_TRANSFORMER_SASS,
             escapeshellarg(sys_get_temp_dir()),
             $this->getType() == 'text/x-scss' ? '--scss' : '',
+            $plugins,
             $path
         );
     }
