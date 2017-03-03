@@ -793,10 +793,10 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         }elseif(preg_match('#^\s*(["\'])([^\1]+)\1#', $cssdata, $matches)){
             $f = $matches[2];
         }
+
         $path_info = pathinfo($parent_file);
         if (in_array($parent_type, ['text/x-scss', 'text/x-sass'])){
-            $ext = preg_quote($path_info['extension'], '#');
-            if (!preg_match("#.$ext\$#", $f))
+            if (!pathinfo($f, PATHINFO_EXTENSION))
                 $f .= ".".$path_info['extension'];
 
             $mixin = implode(DIRECTORY_SEPARATOR, [
@@ -816,7 +816,11 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             return null;
         }
 
-        $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
+        if ($f[0] == '/') {
+            $f = $_SERVER['DOCUMENT_ROOT']. $f;
+        }else{
+            $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
+        }
         return file_exists($f) ? $f : null;
     }
 
@@ -844,7 +848,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         return $res;
     }
 
-    private function find_imports($type, $file, $level){
+    private function find_dependencies($type, $file, $level){
         $level++;
         if (!in_array($type, ['text/x-scss', 'text/x-sass', 'text/x-less']))
             return [];
@@ -870,9 +874,17 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 $f = realpath($f);
                 if ($f){
                     $res[] = $f;
-                    $res = array_merge($res, $this->find_imports($type, $f, $level));
+                    $res = array_merge($res, $this->find_dependencies($type, $f, $level));
+                }
+                continue;
+            }
+            if (preg_match('#\s+url\([\'"]?[^)]+\)#', $line, $matches)){
+                $f = $this->extract_import_file($type, $file, $matches[0]);
+                if ($f){
+                    $res[] = $f;
                 }
             }
+
         }
         fclose($fh);
 
@@ -899,7 +911,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
     function getAdditionalFiles($work_unit) {
         $level = 0;
 
-        return $this->find_imports($work_unit['type'], $work_unit['file'], $level);
+        return $this->find_dependencies($work_unit['type'], $work_unit['file'], $level);
     }
 
     function startWrite(){
