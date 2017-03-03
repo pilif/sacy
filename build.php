@@ -141,7 +141,11 @@ class ContentHashedPhar extends Phar {
         $this->hash = null;
     }
 
-    function buildFromIterator(Iterator $it, $base_dir=null){
+    /**
+     * @param Iterator $it
+     * @param null $base_dir
+     */
+    function buildFromIterator($it, $base_dir=null){
         foreach($it as $f){
             $this->addFileToHash($f);
         }
