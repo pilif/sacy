@@ -823,7 +823,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         }else{
             $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
         }
-        return file_exists($f) ? $f : null;
+        return file_exists($f) ? realpath($f) : null;
     }
 
     private function findCachedDeps($file){
