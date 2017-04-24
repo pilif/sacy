@@ -830,8 +830,8 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         $pdo = $this->getDepcache();
         if (!$pdo) return null;
 
-        $sh = $pdo->prepare('select mtime, depends_on from depcache where source = ?');
-        $sh->execute([$file]);
+        $sh = $pdo->prepare('select mtime, depends_on from depcache where source = ? and mtime >= ?');
+        $sh->execute([$file, filemtime($file)]);
 
         $res = null;
         while(false != ($ra = $sh->fetch())){
@@ -889,10 +889,17 @@ class CssRenderHandler extends ConfiguredRenderHandler{
 
         }
         fclose($fh);
+        if ($normalized_file == '/Users/pilif/Sites/popscan/htdocs/themes/mundo/css/modules/portal.scss'){
+            friendly_dump($res);
+        }
 
         $pdo = $this->getDepcache();
         if ($pdo) {
             $pdo->beginTransaction();
+
+            $ch = $pdo->prepare("delete from depcache where source = ? and mtime < ?");
+            $ch->execute([$normalized_file, filemtime($normalized_file)]);
+
             $sh = $pdo->prepare("insert or replace into depcache (source, depends_on, mtime) values (?, ?, ?)");
             if ($res == []) {
                 // no dependencies beacon
