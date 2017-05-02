@@ -889,9 +889,6 @@ class CssRenderHandler extends ConfiguredRenderHandler{
 
         }
         fclose($fh);
-        if ($normalized_file == '/Users/pilif/Sites/popscan/htdocs/themes/mundo/css/modules/portal.scss'){
-            friendly_dump($res);
-        }
 
         $pdo = $this->getDepcache();
         if ($pdo) {
