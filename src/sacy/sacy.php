@@ -635,7 +635,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 ? SACY_DEPCACHE_FILE
                 : implode(DIRECTORY_SEPARATOR, array(
                     sys_get_temp_dir(),
-                    sprintf('sacy-depcache-%s.sqlite3', md5(ASSET_COMPILE_OUTPUT_DIR))
+                    sprintf('sacy-depcache-%s-v2.sqlite3', md5(ASSET_COMPILE_OUTPUT_DIR))
                 ));
 
             $create_tables = !file_exists($cache_file);
@@ -645,8 +645,8 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
 
             if ($create_tables) {
-                $pdo->exec('create table depcache (source text not null, mtime integer not null, depends_on text not null, primary key (source, depends_on))');
-                $pdo->exec('create index idx_source on depcache(source)');
+                $pdo->exec('create table depcache (source text not null, mtime_source integer not null, mtime integer not null, depends_on text not null, primary key (source, depends_on))');
+                $pdo->exec('create index idx_source on depcache(source, mtime_source)');
             } else {
                 $pdo = new \PDO("sqlite:$cache_file");
             }
@@ -830,7 +830,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         $pdo = $this->getDepcache();
         if (!$pdo) return null;
 
-        $sh = $pdo->prepare('select mtime, depends_on from depcache where source = ? and mtime >= ?');
+        $sh = $pdo->prepare('select mtime, depends_on from depcache where source = ? and mtime_source >= ?');
         $sh->execute([$file, filemtime($file)]);
 
         $res = null;
@@ -894,18 +894,18 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         if ($pdo) {
             $pdo->beginTransaction();
 
-            $ch = $pdo->prepare("delete from depcache where source = ? and mtime < ?");
+            $ch = $pdo->prepare("delete from depcache where source = ? and mtime_source < ?");
             $ch->execute([$normalized_file, filemtime($normalized_file)]);
 
-            $sh = $pdo->prepare("insert or replace into depcache (source, depends_on, mtime) values (?, ?, ?)");
+            $sh = $pdo->prepare("insert or replace into depcache (source, depends_on, mtime, mtime_source) values (?, ?, ?, ?)");
             if ($res == []) {
                 // no dependencies beacon
-                $sh->execute([$normalized_file, '', filemtime($normalized_file)]);
+                $sh->execute([$normalized_file, '', filemtime($normalized_file), filemtime($normalized_file)]);
             } else {
                 $dh = $pdo->prepare("delete from depcache where source = ? and depends_on = ''");
                 $dh->execute([$normalized_file]);
                 foreach ($res as $r) {
-                    $sh->execute([$normalized_file, $r, filemtime($r)]);
+                    $sh->execute([$normalized_file, $r, filemtime($r), filemtime($normalized_file)]);
                 }
             }
             $pdo->commit();
