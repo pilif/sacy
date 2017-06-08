@@ -102,12 +102,11 @@ class WorkUnitExtractor{
             if (isset($u['query'])) return false;
 
         $ref = $u['path'];
-        $path = array($_SERVER['DOCUMENT_ROOT']);
+        $path = array($this->_cfg->getDocumentRoot());
         if ($ref[0] != '/')
             $path[] = $_SERVER['PHP_SELF'];
         $path[] = $ref;
         return realpath(implode(DIRECTORY_SEPARATOR, $path));
-
     }
 
 
@@ -222,6 +221,11 @@ class Config implements \JsonSerializable {
 
         if (is_array($params))
             $this->setParams($params);
+    }
+
+    public function getDocumentRoot()
+    {
+        return realpath(str_replace($_SERVER['SCRIPT_NAME'], '', $_SERVER['SCRIPT_FILENAME']));
     }
 
     public function getDebugMode(){
@@ -569,7 +573,7 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy javascript cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($work_units as $file){
-            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
+            fprintf($fh, "    - %s\n", str_replace($this->getConfig()->getDocumentRoot(), '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -609,7 +613,7 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
 
     function processFile($fh, $work_unit){
         if ($this->getConfig()->get('write_headers'))
-            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+            fprintf($fh, "\n/* %s */\n", str_replace($this->getConfig()->getDocumentRoot(), '<root>', $work_unit['file']));
         fwrite($fh, $this->getOutput($work_unit));
     }
 
@@ -680,7 +684,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy css cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($work_units as $file){
-            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
+            fprintf($fh, "    - %s\n", str_replace($this->getConfig()->getDocumentRoot(), '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -697,7 +701,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $content = \Minify_CSS_UriRewriter::rewrite(
                 $content,
                 dirname($work_unit['file']),
-                $_SERVER['DOCUMENT_ROOT'],
+                $this->getConfig()->getDocumentRoot(),
                 array(),
                 true
             );
@@ -709,7 +713,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             );
         }else{
             if ($this->getConfig()->get('write_headers'))
-               fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+               fprintf($fh, "\n/* %s */\n", str_replace($this->getConfig()->getDocumentRoot(), '<root>', $work_unit['file']));
 
             fwrite($fh, $this->getOutput($work_unit));
         }
@@ -778,12 +782,13 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             return \Minify_CSS_UriRewriter::rewrite(
                 $css,
                 dirname($source_file),
-                $_SERVER['DOCUMENT_ROOT'],
+                $this->getConfig()->getDocumentRoot(),
                 array()
             );
         }else{
             return \Minify_CSS::minify($css, array(
-                'currentDir' => dirname($source_file)
+                'currentDir' => dirname($source_file),
+                'docRoot' => $this->getConfig()->getDocumentRoot()
             ));
         }
     }
