@@ -11,7 +11,14 @@ abstract class ExternalProcessor{
             2 => array('pipe', 'w')
         );
         $cmd = $this->getCommandLine($filename, $opts);
-        $p = proc_open($cmd, $s, $pipes);
+        $env_vars = [];
+        if (array_key_exists('env', $opts) && is_array($opts['env'])){
+            foreach($opts['env'] as $k => $v)
+                $env_vars[] = sprintf("%s=%s", $k, $v);
+        }
+        $cmd_string = implode(' ', $env_vars). ' ' . $cmd;
+
+        $p = proc_open($cmd_string, $s, $pipes);
         if (!is_resource($p))
             throw new \Exception("Failed to execute $cmd");
 

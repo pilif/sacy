@@ -237,7 +237,7 @@ class Config implements \JsonSerializable {
 
     public function setParams($params){
         foreach($params as $key => $value){
-            if (!in_array($key, array('sassc_plugins', 'merge_tags', 'query_strings', 'write_headers', 'debug_toggle', 'block_ref')))
+            if (!in_array($key, array('sassc_plugins', 'merge_tags', 'query_strings', 'write_headers', 'debug_toggle', 'block_ref', 'env')))
                 throw new Exception("Invalid option: $key");
         }
         if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
@@ -749,6 +749,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             if ($work_unit['paths'])
                 $opts['library_path'] = $work_unit['paths'];
             $opts['plugin_files'] = $this->getConfig()->get('sassc_plugins');
+            $opts['env'] = $this->getConfig()->get('env');
             $css = ExternalProcessorRegistry::getTransformerForType($work_unit['type'])
                 ->transform($css, $source_file, $opts);
         }else{
