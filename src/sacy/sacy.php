@@ -171,7 +171,7 @@ class WorkUnitExtractor{
 
         if ($this->validTag($attrs)) {
             $path = null;
-            if (!$content){
+            if (!trim($content)){
                 $path = $this->urlToFile($attrs['src']);
                 if ($path === false){
                     return false;
