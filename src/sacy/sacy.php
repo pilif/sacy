@@ -635,7 +635,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 ? SACY_DEPCACHE_FILE
                 : implode(DIRECTORY_SEPARATOR, array(
                     sys_get_temp_dir(),
-                    sprintf('sacy-depcache-%s-v2.sqlite3', md5(ASSET_COMPILE_OUTPUT_DIR))
+                    sprintf('sacy-depcache-%s-v3.sqlite3', md5(ASSET_COMPILE_OUTPUT_DIR))
                 ));
 
             $create_tables = !file_exists($cache_file);
