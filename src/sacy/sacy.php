@@ -799,7 +799,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
 
         $path_info = pathinfo($parent_file);
         if (in_array($parent_type, ['text/x-scss', 'text/x-sass'])){
-            if (!in_array(pathinfo($f, PATHINFO_EXTENSION), ['scss', 'sass']))
+            if (!in_array(pathinfo($f, PATHINFO_EXTENSION), ['scss', 'sass', 'css']))
                 $f .= ".".$path_info['extension'];
 
             $mixin = implode(DIRECTORY_SEPARATOR, [
