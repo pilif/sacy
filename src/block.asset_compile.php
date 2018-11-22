@@ -21,6 +21,17 @@ function smarty_block_asset_compile($params, $content, &$template, &$repeat){
             return $content;
         }
 
+        $class = defined('SACY_FRAGMENT_CACHE_CLASS') ?
+            SACY_FRAGMENT_CACHE_CLASS :
+            \sacy\FileCache::class;
+        $fragment_cache = new $class();
+
+        if (null !== ($version_id = $cfg->get('cache_version_id'))){
+            $cache_key = sha1(join('', ['full-fragment', $version_id, $content]));
+            $fragment = $fragment_cache->get($cache_key);
+            if (!!$fragment) return $fragment;
+        }
+
         $tag_pattern = '#\s*<\s*T(?:\s+(.*))?\s*(?:/>|>(.*)</T>)\s*#Uims';
         $tags = array();
 
@@ -55,7 +66,7 @@ function smarty_block_asset_compile($params, $content, &$template, &$repeat){
         $ex = new sacy\WorkUnitExtractor($cfg);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
-        $renderer = new sacy\CacheRenderer($cfg, $_SERVER['SCRIPT_FILENAME']);
+        $renderer = new sacy\CacheRenderer($cfg, $_SERVER['SCRIPT_FILENAME'], $fragment_cache);
         $patched_content = $content;
 
         $render = array();
@@ -122,6 +133,11 @@ function smarty_block_asset_compile($params, $content, &$template, &$repeat){
             );
             $sacy['rendered_assets'] = $rendered_assets;
             $template->smarty->assign('sacy', $sacy);
+        }
+
+        if (null !== ($version_id = $cfg->get('cache_version_id'))){
+            $cache_key = sha1(join('', ['full-fragment', $version_id, $content]));
+            $fragment_cache->set($cache_key, $patched_content);
         }
 
         return $patched_content;

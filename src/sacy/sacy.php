@@ -237,7 +237,7 @@ class Config implements \JsonSerializable {
 
     public function setParams($params){
         foreach($params as $key => $value){
-            if (!in_array($key, array('sassc_plugins', 'merge_tags', 'query_strings', 'write_headers', 'debug_toggle', 'block_ref', 'env')))
+            if (!in_array($key, array('sassc_plugins', 'merge_tags', 'query_strings', 'write_headers', 'debug_toggle', 'block_ref', 'env', 'cache_version_id')))
                 throw new Exception("Invalid option: $key");
         }
         if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
@@ -263,15 +263,12 @@ class CacheRenderer {
 
     private $rendered_bits;
 
-    function __construct(Config $config, $source_file){
+    function __construct(Config $config, $source_file, $fragment_cache){
         $this->_cfg = $config;
         $this->_source_file = $source_file;
         $this->rendered_bits = array();
 
-        $class = defined('SACY_FRAGMENT_CACHE_CLASS') ?
-            SACY_FRAGMENT_CACHE_CLASS :
-            'sacy\FileCache';
-        $this->fragment_cache = new $class();
+        $this->fragment_cache = $fragment_cache;
 
         foreach(array('get', 'set') as $m){
             if (!method_exists($this->fragment_cache, $m))
