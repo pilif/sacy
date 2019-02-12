@@ -131,7 +131,7 @@ class ProcessorSass extends ExternalProcessor{
             throw new Exception('SACY_TRANSFORMER_SASS defined but not executable');
         }
         $libpath = $opts['library_path'] ?: [dirname($filename)];
-        $libpath[] = $_SERVER['DOCUMENT_ROOT'] ?: getcwd();
+        $libpath[] = $opts['document_root'] ?: getcwd();
 
         $plugins = implode(' ', (is_array($opts['plugin_files']))
             ? array_filter(array_map(function($f){

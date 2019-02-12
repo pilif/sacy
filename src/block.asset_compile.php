@@ -66,7 +66,7 @@ function smarty_block_asset_compile($params, $content, &$template, &$repeat){
         $ex = new sacy\WorkUnitExtractor($cfg);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
-        $renderer = new sacy\CacheRenderer($cfg, $_SERVER['SCRIPT_FILENAME'], $fragment_cache);
+        $renderer = new sacy\CacheRenderer($cfg, $cfg->get('server_params')['SCRIPT_FILENAME'], $fragment_cache);
         $patched_content = $content;
 
         $render = array();

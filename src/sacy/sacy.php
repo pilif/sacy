@@ -102,9 +102,9 @@ class WorkUnitExtractor{
             if (isset($u['query'])) return false;
 
         $ref = $u['path'];
-        $path = array($_SERVER['DOCUMENT_ROOT']);
+        $path = array($this->_cfg->get('server_params')['DOCUMENT_ROOT']);
         if ($ref[0] != '/')
-            $path[] = $_SERVER['PHP_SELF'];
+            $path[] = $this->_cfg->get('server_params')['PHP_SELF'];
         $path[] = $ref;
         return realpath(implode(DIRECTORY_SEPARATOR, $path));
 
@@ -218,6 +218,9 @@ class Config implements \JsonSerializable {
         $this->params['write_headers'] = defined('SACY_WRITE_HEADERS') ? SACY_WRITE_HEADERS : true;
         $this->params['debug_toggle']  = defined('SACY_DEBUG_TOGGLE') ? SACY_DEBUG_TOGGLE : '_sacy_debug';
         $this->params['sassc_plugins'] = defined('SACY_SASSC_PLUGIN') ? [SACY_SASSC_PLUGIN] : [];
+        $this->params['debug_mode'] = defined('SACY_DEBUG_MODE') ? SACY_DEBUG_MODE : 0;
+        $this->params['server_params'] = defined('SACY_SERVER_PARAMS') ? SACY_SERVER_PARAMS : $_SERVER;
+
         $this->params['merge_tags'] = false;
 
         if (is_array($params))
@@ -226,7 +229,7 @@ class Config implements \JsonSerializable {
 
     public function getDebugMode(){
         if ($this->params['debug_toggle'] === false)
-            return 0;
+            return $this->params['debug_mode'];
         if (isset($_GET[$this->params['debug_toggle']]))
             return intval($_GET[$this->params['debug_toggle']]);
         if (isset($_COOKIE[$this->params['debug_toggle']]))
@@ -237,7 +240,7 @@ class Config implements \JsonSerializable {
 
     public function setParams($params){
         foreach($params as $key => $value){
-            if (!in_array($key, array('sassc_plugins', 'merge_tags', 'query_strings', 'write_headers', 'debug_toggle', 'block_ref', 'env', 'cache_version_id')))
+            if (!in_array($key, array('debug_mode', 'sassc_plugins', 'merge_tags', 'query_strings', 'write_headers', 'debug_toggle', 'block_ref', 'env', 'cache_version_id')))
                 throw new Exception("Invalid option: $key");
         }
         if (isset($params['query_strings']) && !in_array($params['query_strings'], array('force-handle', 'ignore')))
@@ -566,7 +569,7 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy javascript cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($work_units as $file){
-            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
+            fprintf($fh, "    - %s\n", str_replace($this->getConfig()->get('server_params')['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -584,21 +587,21 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
 
         if ($work_unit['type'] == 'text/coffeescript'){
             $js = ExternalProcessorRegistry::typeIsSupported('text/coffeescript') ?
-                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $source_file) :
+                ExternalProcessorRegistry::getTransformerForType('text/coffeescript')->transform($js, $source_file, ['document_root' => $this->getConfig()->get('server_params')['DOCUMENT_ROOT']]) :
                 \Coffeescript::build($js);
         } else if ($work_unit['type'] == 'text/x-eco'){
             $eco = ExternalProcessorRegistry::getTransformerForType('text/x-eco');
-            $js = $eco->transform($js, $source_file, $work_unit['data']);
+            $js = $eco->transform($js, $source_file, $work_unit['data'], ['document_root' => $this->getConfig()->get('server_params')['DOCUMENT_ROOT']]);
         } else if ($work_unit['type'] == 'text/x-jsx'){
             $jsx = ExternalProcessorRegistry::getTransformerForType('text/x-jsx');
-            $js = $jsx->transform($js, $source_file, $work_unit['data']);
+            $js = $jsx->transform($js, $source_file, $work_unit['data'], ['document_root' => $this->getConfig()->get('server_params')['DOCUMENT_ROOT']]);
         }
 
         if ($debug){
             return $js;
         }else{
             return ExternalProcessorRegistry::typeIsSupported('text/javascript') ?
-                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js, $source_file) :
+                ExternalProcessorRegistry::getCompressorForType('text/javascript')->transform($js, $source_file, ['document_root' => $this->getConfig()->get('server_params')['DOCUMENT_ROOT']]) :
                 \JSMin::minify($js);
         }
 
@@ -606,7 +609,7 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
 
     function processFile($fh, $work_unit){
         if ($this->getConfig()->get('write_headers'))
-            fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+            fprintf($fh, "\n/* %s */\n", str_replace($this->getConfig()->get('server_params')['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
         fwrite($fh, $this->getOutput($work_unit));
     }
 
@@ -677,7 +680,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy css cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($work_units as $file){
-            fprintf($fh, "    - %s\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $file['file']));
+            fprintf($fh, "    - %s\n", str_replace($this->getConfig()->get('server_params')['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -694,7 +697,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $content = \Minify_CSS_UriRewriter::rewrite(
                 $content,
                 dirname($work_unit['file']),
-                $_SERVER['DOCUMENT_ROOT'],
+                $this->getConfig()->get('server_params')['DOCUMENT_ROOT'],
                 array(),
                 true
             );
@@ -706,7 +709,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             );
         }else{
             if ($this->getConfig()->get('write_headers'))
-               fprintf($fh, "\n/* %s */\n", str_replace($_SERVER['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+               fprintf($fh, "\n/* %s */\n", str_replace($this->getConfig()->get('server_params')['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
 
             fwrite($fh, $this->getOutput($work_unit));
         }
@@ -747,6 +750,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 $opts['library_path'] = $work_unit['paths'];
             $opts['plugin_files'] = $this->getConfig()->get('sassc_plugins');
             $opts['env'] = $this->getConfig()->get('env');
+            $opts['document_root'] = $this->getConfig()->get('server_params')['DOCUMENT_ROOT'];
             $css = ExternalProcessorRegistry::getTransformerForType($work_unit['type'])
                 ->transform($css, $source_file, $opts);
         }else{
@@ -776,12 +780,13 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             return \Minify_CSS_UriRewriter::rewrite(
                 $css,
                 dirname($source_file),
-                $_SERVER['DOCUMENT_ROOT'],
+                $this->getConfig()->get('server_params')['DOCUMENT_ROOT'],
                 array()
             );
         }else{
             return \Minify_CSS::minify($css, array(
-                'currentDir' => dirname($source_file)
+                'currentDir' => dirname($source_file),
+                'docRoot' => $this->getConfig()->get('server_params')['DOCUMENT_ROOT'],
             ));
         }
     }
@@ -817,7 +822,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         }
 
         if ($f[0] == '/') {
-            $f = $_SERVER['DOCUMENT_ROOT']. $f;
+            $f = $this->getConfig()->get('server_params')['DOCUMENT_ROOT']. $f;
         }else{
             $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
         }
