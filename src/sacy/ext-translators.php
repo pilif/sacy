@@ -142,13 +142,22 @@ class ProcessorSass extends ExternalProcessor{
         $path =
             implode(' ', array_map(function($p){ return '-I '.escapeshellarg($p); }, array_unique($libpath)));
 
-        return sprintf('%s --cache-location=%s -s %s %s %s',
-            SACY_TRANSFORMER_SASS,
-            escapeshellarg(sys_get_temp_dir()),
-            $this->getType() == 'text/x-scss' ? '--scss' : '',
-            $plugins,
-            $path
-        );
+        if(basename(SACY_TRANSFORMER_SASS) == "sassc"){
+            return sprintf('%s -s %s %s %s',
+                SACY_TRANSFORMER_SASS,
+                $this->getType() == 'text/x-sass' ? '--sass' : '',
+                $plugins,
+                $path
+            );
+        }else{
+            return sprintf('%s --cache-location=%s -s %s %s %s',
+                SACY_TRANSFORMER_SASS,
+                escapeshellarg(sys_get_temp_dir()),
+                $this->getType() == 'text/x-scss' ? '--scss' : '',
+                $plugins,
+                $path
+            );
+        }
     }
 }
 
