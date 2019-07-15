@@ -1,5 +1,5 @@
 <?php
-namespace sacy;
+namespace sacy\transforms;
 
 class PhpSassSacy {
     static function isAvailable(){

@@ -1,14 +1,60 @@
 <?php
 
-if (!defined("____SACY_BUNDLED"))
-    include_once(implode(DIRECTORY_SEPARATOR, array(dirname(__FILE__), 'sacy', 'sacy.php')));
+namespace sacy;
 
-if (!(defined("ASSET_COMPILE_OUTPUT_DIR") && defined("ASSET_COMPILE_URL_ROOT"))){
-    throw new sacy\Exception("Failed to initialize because path configuration is not set (ASSET_COMPILE_OUTPUT_DIR and ASSET_COMPILE_URL_ROOT)");
-}
+use sacy\internal\BlockParams;
+use sacy\internal\CacheRenderer;
+use sacy\internal\CompatConfiguration;
+use sacy\internal\WorkUnitExtractor;
 
-function smarty_block_asset_compile($params, $content, &$template, &$repeat){
-    if (!$repeat){
+class Sacy {
+    /** @var Sacy */
+    private static $instance = null;
+
+    private $config;
+
+    static function registerGlobalCompatHandler(Configuration $config=null){
+        if (static::$instance !== null) return;
+        static::$instance = new static($config ?? new CompatConfiguration());
+
+        // needing eval to put function in global namespace
+        eval('function smarty_block_asset_compile($params, $content, &$template, &$repeat){ return (sacy\Sacy::getGlobalHandler())($params, $content, $template, $repeat);}');
+    }
+
+    static function getGlobalHandler(): \Closure{
+        if (static::$instance === null){
+            throw new \LogicException("call registerGlobalCompatHandler first");
+        }
+        return static::$instance->getHandler();
+    }
+
+    function __construct(Configuration $config) {
+        $this->config = $config;
+    }
+
+    private $handler = null;
+    function getHandler(): \Closure{
+        if ($this->handler === null){
+            $this->handler = function($params, $content, $smarty, &$repeat){
+                if ($repeat) return null;
+                return $this->performTagReplacement($content, new BlockParams($params));
+            };
+        }
+        return $this->handler;
+    }
+
+    /**
+     * @param Smarty $smarty
+     */
+    function registerSmartyPlugin($smarty){
+        $smarty->registerPlugin('block', 'asset_compile', $this->getHandler());
+    }
+
+    private function getDebugMode(BlockParams $p): int {
+        return max($p->getDebugMode(), $this->config->getDebugMode());
+    }
+
+    private function performTagReplacement($content, BlockParams $params){
         // don't shoot me, but all tried using the dom-parser and removing elements
         // ended up with problems due to the annoying DOM API and braindead stuff
         // like no getDocumentElement() or getElementByID() not working even though
@@ -16,17 +62,13 @@ function smarty_block_asset_compile($params, $content, &$template, &$repeat){
         //
         // So, let's go back to good old regexps :-)
 
-        $cfg = new sacy\Config($params);
-        if ($cfg->getDebugMode() == 1 ){
+        if ($this->getDebugMode($params) == 1 ){
             return $content;
         }
 
-        $class = defined('SACY_FRAGMENT_CACHE_CLASS') ?
-            SACY_FRAGMENT_CACHE_CLASS :
-            \sacy\FileCache::class;
-        $fragment_cache = new $class();
+        $fragment_cache = $this->config->getFragmentCache();
 
-        if (null !== ($version_id = $cfg->get('cache_version_id'))){
+        if (null !== ($version_id = $params->get('cache_version_id'))){
             $cache_key = sha1(join('', ['full-fragment', $version_id, $content]));
             $fragment = $fragment_cache->get($cache_key);
             if (!!$fragment) return $fragment;
@@ -63,10 +105,10 @@ function smarty_block_asset_compile($params, $content, &$template, &$repeat){
             if ($a['index'] == $b['index']) return 0;
             return ($a['index'] < $b['index']) ? 1 : -1;
         });
-        $ex = new sacy\WorkUnitExtractor($cfg);
+        $ex = new WorkUnitExtractor($params);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
-        $renderer = new sacy\CacheRenderer($cfg, $cfg->get('server_params')['SCRIPT_FILENAME'], $fragment_cache);
+        $renderer = new CacheRenderer($params, $params->get('server_params')['SCRIPT_FILENAME'], $fragment_cache);
         $patched_content = $content;
 
         $render = array();
@@ -82,7 +124,7 @@ function smarty_block_asset_compile($params, $content, &$template, &$repeat){
             // the moment the category changes, render all we have so far
             // this makes it IMPERATIVE to keep links of the same category
             // together.
-            if ($curr_cat != $cg || ($cfg->getDebugMode() == 3 && $renderer->allowMergedTransformOnly($work_units[$i-1]['tag']) && count($render))){
+            if ($curr_cat != $cg || ($this->getDebugMode($params) == 3 && $renderer->allowMergedTransformOnly($work_units[$i-1]['tag']) && count($render))){
                 $render_order = array_reverse($render);
                 $res = $renderer->renderWorkUnits($work_units[$i-1]['tag'], $work_units[$i-1]['group'], $render_order);
                 if ($res === false){
@@ -124,18 +166,7 @@ function smarty_block_asset_compile($params, $content, &$template, &$repeat){
         }
         $patched_content = substr_replace($patched_content, $res, $m, 0);
 
-        if($block_ref = $cfg->get("block_ref")){
-            $sacy = $template->smarty->getTemplateVars('sacy') ?: array();
-            $rendered_assets = $sacy['rendered_assets'] ?: array();
-            $rendered_assets[$block_ref] = array_merge(
-                $rendered_assets[$block_ref] ?: array(),
-                $renderer->getRenderedAssets()
-            );
-            $sacy['rendered_assets'] = $rendered_assets;
-            $template->smarty->assign('sacy', $sacy);
-        }
-
-        if (null !== ($version_id = $cfg->get('cache_version_id'))){
+        if (null !== ($version_id = $params->get('cache_version_id'))){
             $cache_key = sha1(join('', ['full-fragment', $version_id, $content]));
             $fragment_cache->set($cache_key, $patched_content);
         }

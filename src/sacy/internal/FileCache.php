@@ -1,7 +1,10 @@
 <?php
-namespace sacy;
+namespace sacy\internal;
 
-class FileCache{
+use sacy\Cache;
+use sacy\Exception;
+
+class FileCache implements Cache {
     private $cache_dir;
 
     function __construct(){
