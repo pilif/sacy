@@ -17,7 +17,7 @@ class FileCache{
     }
 
     function key2file($key){
-        if (!preg_match('#^[0-9a-z]+$#', $key)) throw new Exception('Invalid cache key');
+        if (!preg_match('#^[-0-9a-z]+$#', $key)) throw new Exception("Invalid cache key: $key");
         return implode(DIRECTORY_SEPARATOR, array(
             $this->cache_dir,
             preg_replace('#^([0-9a-f]{2})([0-9a-f]{2})(.*)$#u', '\1/\2/\3', $key)
