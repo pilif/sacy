@@ -1,3 +1,9 @@
+Version 0.5 (2019-??-??):
+ - Can be installed via composer
+ - Explicit configuration via a proper interface
+ - Doesn't register a smarty function by default any more
+ - People can write their own pluggable transforms
+
 Version 0.4 (2013-??-??):
  - Support for [JSX](http://facebook.github.io/react/docs/jsx-in-depth.html)
  - Support for merging consecutive SCSS/SASS files before compilation
