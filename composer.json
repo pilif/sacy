@@ -11,7 +11,8 @@
         }
     },
     "require": {
-        "php": "^7.1"
+        "php": "^7.1",
+        "ext-json": "*"
     },
     "suggest": {
         "mrclay/jsmin-php": "Use jsmin-php for built-in JS minification",
