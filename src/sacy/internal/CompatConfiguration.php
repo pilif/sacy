@@ -61,4 +61,13 @@ class CompatConfiguration implements Configuration {
         }
         return $this->cached_repo;
     }
+
+    function getDependencyCacheFile(): string {
+        return defined('SACY_DEPCACHE_FILE')
+            ? SACY_DEPCACHE_FILE
+            : implode(DIRECTORY_SEPARATOR, array(
+                sys_get_temp_dir(),
+                sprintf('sacy-depcache-%s-v3.sqlite3', md5($this->getOutputDir()))
+            ));
+    }
 }

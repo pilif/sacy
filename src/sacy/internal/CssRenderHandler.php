@@ -22,12 +22,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         if (!extension_loaded('pdo_sqlite')) return null;
 
         if ($this->cache_db === null) {
-            $cache_file = defined('SACY_DEPCACHE_FILE')
-                ? SACY_DEPCACHE_FILE
-                : implode(DIRECTORY_SEPARATOR, array(
-                    sys_get_temp_dir(),
-                    sprintf('sacy-depcache-%s-v3.sqlite3', md5(ASSET_COMPILE_OUTPUT_DIR))
-                ));
+            $cache_file = $this->getConfig()->getDependencyCacheFile();
 
             $create_tables = !file_exists($cache_file);
 
