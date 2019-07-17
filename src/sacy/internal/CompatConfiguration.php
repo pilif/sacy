@@ -54,6 +54,10 @@ class CompatConfiguration implements Configuration {
         return defined('SACY_WRITE_HEADERS') ? SACY_WRITE_HEADERS : true;
     }
 
+    function getDebugToggle() {
+        return defined('SACY_DEBUG_TOGGLE') ? SACY_DEBUG_TOGGLE : '_sacy_debug';
+    }
+
     private $cached_repo = null;
     function getTransformRepository(): TransformRepository {
         if ($this->cached_repo === null){

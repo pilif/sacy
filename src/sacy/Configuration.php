@@ -12,4 +12,5 @@ interface Configuration {
     function writeHeaders(): bool;
     function getTransformRepository(): TransformRepository;
     function getDependencyCacheFile(): string;
+    function getDebugToggle();
 }

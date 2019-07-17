@@ -37,7 +37,7 @@ class Sacy {
         if ($this->handler === null){
             $this->handler = function($params, $content, $smarty, &$repeat){
                 if ($repeat) return null;
-                return $this->performTagReplacement($content, new BlockParams($params));
+                return $this->performTagReplacement($content, new BlockParams($this->config, $params));
             };
         }
         return $this->handler;

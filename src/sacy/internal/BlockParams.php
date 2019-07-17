@@ -2,6 +2,7 @@
 
 namespace sacy\internal;
 
+use sacy\Configuration;
 use sacy\Exception;
 
 class BlockParams implements \JsonSerializable {
@@ -11,13 +12,13 @@ class BlockParams implements \JsonSerializable {
         return $this->params[$key];
     }
 
-    public function __construct($params = null){
-        $this->params['query_strings'] = defined('SACY_QUERY_STRINGS') ? SACY_QUERY_STRINGS : 'ignore';
-        $this->params['write_headers'] = defined('SACY_WRITE_HEADERS') ? SACY_WRITE_HEADERS : true;
-        $this->params['debug_toggle']  = defined('SACY_DEBUG_TOGGLE') ? SACY_DEBUG_TOGGLE : '_sacy_debug';
-        $this->params['sassc_plugins'] = defined('SACY_SASSC_PLUGIN') ? [SACY_SASSC_PLUGIN] : [];
-        $this->params['debug_mode'] = defined('SACY_DEBUG_MODE') ? SACY_DEBUG_MODE : 0;
-        $this->params['server_params'] = defined('SACY_SERVER_PARAMS') ? SACY_SERVER_PARAMS : $_SERVER;
+    public function __construct(Configuration $config, $params = null){
+        $this->params['query_strings'] = 'ignore';
+        $this->params['write_headers'] = $config->writeHeaders();
+        $this->params['debug_toggle']  = $config->getDebugToggle();
+        $this->params['sassc_plugins'] = [];
+        $this->params['debug_mode'] = $config->getDebugMode();
+        $this->params['server_params'] = $config->getServerParams();
 
         $this->params['merge_tags'] = false;
 

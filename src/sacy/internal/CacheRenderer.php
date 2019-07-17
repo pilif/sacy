@@ -105,7 +105,7 @@ class CacheRenderer {
     }
 
     private function content_key_for_mtime_key($key, $work_units){
-        if (!(defined('SACY_USE_CONTENT_BASED_CACHE') && SACY_USE_CONTENT_BASED_CACHE))
+        if (!$this->_configuration->useContentBasedCache())
             return $key;
 
         $cache_key = 'ck-for-mkey-'.$key;
