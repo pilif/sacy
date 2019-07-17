@@ -5,9 +5,22 @@ namespace sacy\internal;
 use sacy\Transformer;
 
 abstract class ExternalProcessor implements Transformer {
+    private $executable;
+
+    function __construct($executable) {
+        if (!is_executable($executable)){
+            throw new \InvalidArgumentException("$executable is not executable");
+        }
+        $this->executable = $executable;
+    }
+
     abstract protected function getCommandLine($filename, $opts=array());
 
-    function transform(string $in, string $filename, array $opts=array()): string{
+    protected function getExecutable(): string {
+        return $this->executable;
+    }
+
+    function transform(string $in_content, ?string $filename, array $opts=array()): string{
         $s = array(
             0 => array('pipe', 'r'),
             1 => array('pipe', 'w'),
@@ -25,7 +38,7 @@ abstract class ExternalProcessor implements Transformer {
         if (!is_resource($p))
             throw new \Exception("Failed to execute $cmd");
 
-        fwrite($pipes[0], $in);
+        fwrite($pipes[0], $in_content);
         fclose($pipes[0]);
 
         $out = stream_get_contents($pipes[1]);

@@ -9,16 +9,15 @@
 
 namespace sacy\internal;
 
-use sacy\internal\BlockParams;
-use sacy\internal\CssRenderHandler;
+use sacy\Configuration;
 use sacy\Exception;
-use sacy\internal\JavaScriptRenderHandler;
 
 class WorkUnitExtractor {
-    private $_cfg;
+    private $_params;
 
-    function __construct(BlockParams $config) {
-        $this->_cfg = $config;
+    function __construct(Configuration $cfg, BlockParams $params) {
+        $this->_params = $params;
+        $this->config = $cfg;
     }
 
     function getAcceptedWorkUnits($tags) {
@@ -70,13 +69,13 @@ class WorkUnitExtractor {
         if (isset($u['host']) || isset($u['scheme']))
             return false;
 
-        if ($this->_cfg->get('query_strings') == 'ignore')
+        if ($this->_params->get('query_strings') == 'ignore')
             if (isset($u['query'])) return false;
 
         $ref = $u['path'];
-        $path = array($this->_cfg->get('server_params')['DOCUMENT_ROOT']);
+        $path = array($this->_params->get('server_params')['DOCUMENT_ROOT']);
         if ($ref[0] != '/')
-            $path[] = $this->_cfg->get('server_params')['PHP_SELF'];
+            $path[] = $this->_params->get('server_params')['PHP_SELF'];
         $path[] = $ref;
         return realpath(implode(DIRECTORY_SEPARATOR, $path));
 
@@ -99,11 +98,12 @@ class WorkUnitExtractor {
         if (!isset($attrs['type'])) return false;
 
         // not one of the supported types
-        if (!in_array(strtolower($attrs['type']), CssRenderHandler::supportedTransformations()))
+        if (!$this->config->getTransformRepository()->supportsType($attrs['type'])) {
             return false;
+        }
 
         // in debug mode 3, only transform
-        if ($this->_cfg->getDebugMode() == 3 &&
+        if ($this->_params->getDebugMode() == 3 &&
             !CssRenderHandler::willTransformType($attrs['type']))
             return false;
 
@@ -116,7 +116,7 @@ class WorkUnitExtractor {
             if ($path === false) return false;
         }
 
-        $group = serialize($this->_cfg->get('merge_tags') ? [$attrs['media'], $attrs['type']] : [$attrs['media']]);
+        $group = serialize($this->_params->get('merge_tags') ? [$attrs['media'], $attrs['type']] : [$attrs['media']]);
 
         return array(
             'group' => $group,
@@ -127,7 +127,7 @@ class WorkUnitExtractor {
     }
 
     private function validTag($attrs) {
-        $types = array_merge(array('text/javascript', 'application/javascript'), JavaScriptRenderHandler::supportedTransformations());
+        $types = array_merge(array('text/javascript', 'application/javascript'), $this->config->getTransformRepository()->getSupportedTypes());
         return in_array($attrs['type'], $types);
     }
 
@@ -136,8 +136,7 @@ class WorkUnitExtractor {
         if (!$attrs['type'])
             $attrs['type'] = 'text/javascript';
         $attrs['type'] = strtolower($attrs['type']);
-        if ($this->_cfg->getDebugMode() == 3 &&
-            !JavaScriptRenderHandler::willTransformType($attrs['type'])) {
+        if ($this->_params->getDebugMode() == 3) {
             return false;
         }
 

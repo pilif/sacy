@@ -105,10 +105,10 @@ class Sacy {
             if ($a['index'] == $b['index']) return 0;
             return ($a['index'] < $b['index']) ? 1 : -1;
         });
-        $ex = new WorkUnitExtractor($params);
+        $ex = new WorkUnitExtractor($this->config, $params);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
-        $renderer = new CacheRenderer($params, $params->get('server_params')['SCRIPT_FILENAME'], $fragment_cache);
+        $renderer = new CacheRenderer($this->config, $params, $params->get('server_params')['SCRIPT_FILENAME'], $fragment_cache);
         $patched_content = $content;
 
         $render = array();

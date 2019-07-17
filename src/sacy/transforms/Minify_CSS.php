@@ -41,7 +41,7 @@ class Minify_CSS {
         } else {
             $css = Minify_CommentPreserver::process(
                 $css
-                ,array('Minify_CSS_Compressor', 'process')
+                ,array(Minify_CSS_Compressor::class, 'process')
                 ,array($options)
             );
         }
@@ -71,7 +71,7 @@ class Minify_CSS_UriRewriter {
      * if you extend Minify_CSS_UriRewriter
      * @var string
      */
-    protected static $className = 'Minify_CSS_UriRewriter';
+    protected static $className = 'sacy\transforms\Minify_CSS_UriRewriter';
 
     /**
      * rewrite() and rewriteRelative() append debugging information here

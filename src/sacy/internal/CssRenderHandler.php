@@ -2,8 +2,10 @@
 
 namespace sacy\internal;
 
+use sacy\Configuration;
 use sacy\Exception;
 use sacy\ExternalProcessorRegistry;
+use sacy\transforms\Minify_CSS;
 use sacy\transforms\Minify_CSS_UriRewriter;
 use sacy\transforms\PhpSassSacy;
 
@@ -12,8 +14,8 @@ class CssRenderHandler extends ConfiguredRenderHandler{
     private $collecting = false;
     private $cache_db = null;
 
-    function __construct(BlockParams $cfg, $fragment_cache, $source_file) {
-        parent::__construct($cfg, $fragment_cache, $source_file);
+    function __construct(Configuration $cfg, BlockParams $params, $fragment_cache, $source_file) {
+        parent::__construct($cfg, $params, $fragment_cache, $source_file);
     }
 
     private function getDepcache(){
@@ -45,19 +47,6 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         return $this->cache_db;
     }
 
-
-    static function supportedTransformations(){
-        $res = array('', 'text/css');
-        if (class_exists('lessc') || ExternalProcessorRegistry::typeIsSupported('text/x-less'))
-            $res[] = 'text/x-less';
-        if (class_exists('SassParser') || ExternalProcessorRegistry::typeIsSupported('text/x-sass'))
-            $res = array_merge($res, array('text/x-sass', 'text/x-scss'));
-        if (PhpSassSacy::isAvailable())
-            $res[] = 'text/x-scss';
-
-        return array_unique($res);
-    }
-
     function getFileExtension() { return '.css'; }
 
     static function willTransformType($type){
@@ -69,7 +58,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy css cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($work_units as $file){
-            fprintf($fh, "    - %s\n", str_replace($this->getConfig()->get('server_params')['DOCUMENT_ROOT'], '<root>', $file['file']));
+            fprintf($fh, "    - %s\n", str_replace($this->getParams()->get('server_params')['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -86,7 +75,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $content = Minify_CSS_UriRewriter::rewrite(
                 $content,
                 dirname($work_unit['file']),
-                $this->getConfig()->get('server_params')['DOCUMENT_ROOT'],
+                $this->getParams()->get('server_params')['DOCUMENT_ROOT'],
                 array(),
                 true
             );
@@ -97,8 +86,8 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 'type' => $work_unit['type'],
             );
         }else{
-            if ($this->getConfig()->get('write_headers'))
-               fprintf($fh, "\n/* %s */\n", str_replace($this->getConfig()->get('server_params')['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+            if ($this->getParams()->get('write_headers'))
+               fprintf($fh, "\n/* %s */\n", str_replace($this->getParams()->get('server_params')['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
 
             fwrite($fh, $this->getOutput($work_unit));
         }
@@ -122,7 +111,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
     }
 
     function getOutput($work_unit){
-        $debug = $this->getConfig()->getDebugMode() == 3;
+        $debug = $this->getParams()->getDebugMode() == 3;
 
         if ($work_unit['file']){
             $css = @file_get_contents($work_unit['file']);
@@ -133,49 +122,28 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $source_file = $this->getSourceFile();
         }
 
-        if (ExternalProcessorRegistry::typeIsSupported($work_unit['type'])){
+        if ($this->getConfig()->getTransformRepository()->supportsType($work_unit['type'])){
             $opts = array();
             if ($work_unit['paths'])
                 $opts['library_path'] = $work_unit['paths'];
-            $opts['plugin_files'] = $this->getConfig()->get('sassc_plugins');
-            $opts['env'] = $this->getConfig()->get('env');
-            $opts['document_root'] = $this->getConfig()->get('server_params')['DOCUMENT_ROOT'];
-            $css = ExternalProcessorRegistry::getTransformerForType($work_unit['type'])
-                ->transform($css, $source_file, $opts);
-        }else{
-            if ($work_unit['type'] == 'text/x-less'){
-                $less = new \lessc();
-                $less->importDir = dirname($source_file).'/'; #lessphp concatenates without a /
-                $css = $less->parse($css);
-            }
-            if (PhpSassSacy::isAvailable() && $work_unit['type'] == 'text/x-scss'){
-                $css = PhpSassSacy::compile($source_file, $work_unit['paths'] ?: array(dirname($source_file)));
-            }elseif (in_array($work_unit['type'], array('text/x-scss', 'text/x-sass'))){
-                $config = array(
-                    'cache' => false, // no need. WE are the cache!
-                    'debug_info' => $debug,
-                    'line' => $debug,
-                    'load_paths' => $work_unit['paths'] ?: array(dirname($source_file)),
-                    'filename' => $source_file,
-                    'quiet' => true,
-                    'style' => $debug ? 'nested' : 'compressed'
-                );
-                $sass = new \SassParser($config);
-                $css = $sass->toCss($css, false); // isFile?
-            }
+            $opts['plugin_files'] = $this->getParams()->get('sassc_plugins');
+            $opts['env'] = $this->getParams()->get('env');
+            $opts['document_root'] = $this->getParams()->get('server_params')['DOCUMENT_ROOT'];
+            $t = $this->getConfig()->getTransformRepository()->getTransformerForType($work_unit['type']);
+            $css = $t ? $t->transform($work_unit['content'], $work_unit['file'], $opts) : $work_unit['content'];
         }
 
         if ($debug){
-            return \Minify_CSS_UriRewriter::rewrite(
+            return Minify_CSS_UriRewriter::rewrite(
                 $css,
                 dirname($source_file),
-                $this->getConfig()->get('server_params')['DOCUMENT_ROOT'],
+                $this->getParams()->get('server_params')['DOCUMENT_ROOT'],
                 array()
             );
         }else{
-            return \Minify_CSS::minify($css, array(
+            return Minify_CSS::minify($css, array(
                 'currentDir' => dirname($source_file),
-                'docRoot' => $this->getConfig()->get('server_params')['DOCUMENT_ROOT'],
+                'docRoot' => $this->getParams()->get('server_params')['DOCUMENT_ROOT'],
             ));
         }
     }
@@ -211,7 +179,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         }
 
         if ($f[0] == '/') {
-            $f = $this->getConfig()->get('server_params')['DOCUMENT_ROOT']. $f;
+            $f = $this->getParams()->get('server_params')['DOCUMENT_ROOT']. $f;
         }else{
             $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
         }

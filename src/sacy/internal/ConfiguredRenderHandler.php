@@ -2,17 +2,17 @@
 
 namespace sacy\internal;
 
-use sacy\internal\FileCache;
-use sacy\internal\CacheRenderHandler;
-use sacy\internal\BlockParams;
+use sacy\Configuration;
 
 abstract class ConfiguredRenderHandler implements CacheRenderHandler{
-    private $_cfg;
+    private $_params;
     private $_source_file;
     private $_cache;
+    private $_config;
 
-    function __construct(BlockParams $cfg, $fragment_cache, $source_file){
-        $this->_cfg = $cfg;
+    function __construct(Configuration $cfg, BlockParams $params, $fragment_cache, $source_file){
+        $this->_config = $cfg;
+        $this->_params = $params;
         $this->_source_file = $source_file;
         $this->_cache = $fragment_cache;
     }
@@ -21,8 +21,12 @@ abstract class ConfiguredRenderHandler implements CacheRenderHandler{
         return $this->_source_file;
     }
 
-    public function getConfig(){
-        return $this->_cfg;
+    public function getParams(): BlockParams{
+        return $this->_params;
+    }
+
+    public function getConfig(): Configuration{
+        return $this->_config;
     }
 
     /**

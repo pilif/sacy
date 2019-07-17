@@ -10,4 +10,5 @@ interface Configuration {
     function getDebugMode():  int;
     function useContentBasedCache(): bool;
     function writeHeaders(): bool;
+    function getTransformRepository(): TransformRepository;
 }

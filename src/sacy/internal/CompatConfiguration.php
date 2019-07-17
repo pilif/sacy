@@ -5,6 +5,7 @@ namespace sacy\internal;
 use sacy\Cache;
 use sacy\Configuration;
 use sacy\Exception;
+use sacy\TransformRepository;
 
 class CompatConfiguration implements Configuration {
     function __construct() {
@@ -51,5 +52,13 @@ class CompatConfiguration implements Configuration {
 
     function writeHeaders(): bool {
         return defined('SACY_WRITE_HEADERS') ? SACY_WRITE_HEADERS : true;
+    }
+
+    private $cached_repo = null;
+    function getTransformRepository(): TransformRepository {
+        if ($this->cached_repo === null){
+            $this->cached_repo = new CompatTransformRepository();
+        }
+        return $this->cached_repo;
     }
 }

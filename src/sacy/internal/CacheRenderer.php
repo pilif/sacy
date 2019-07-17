@@ -2,6 +2,7 @@
 
 namespace sacy\internal;
 
+use sacy\Configuration;
 use sacy\internal\CacheRenderHandler;
 use sacy\internal\CssRenderHandler;
 use sacy\Exception;
@@ -9,7 +10,8 @@ use sacy\internal\FileCache;
 use sacy\internal\JavaScriptRenderHandler;
 
 class CacheRenderer {
-    private $_cfg;
+    private $_params;
+    private $_configuration;
     private $_source_file;
 
     /** @var FileCache */
@@ -17,8 +19,9 @@ class CacheRenderer {
 
     private $rendered_bits;
 
-    function __construct(BlockParams $config, $source_file, $fragment_cache){
-        $this->_cfg = $config;
+    function __construct(Configuration $config, BlockParams $params, $source_file, $fragment_cache){
+        $this->_params = $params;
+        $this->_configuration = $config;
         $this->_source_file = $source_file;
         $this->rendered_bits = array();
 
@@ -61,11 +64,11 @@ class CacheRenderer {
             $cs = $cat ? sprintf(' media="%s"', htmlspecialchars($c[0], ENT_QUOTES)) : '';
         }
         if ($work_units[0]['file']){
-            if ($res = $this->generate_file_cache($work_units, new CssRenderHandler($this->_cfg, $this->fragment_cache, $this->_source_file))){
+            if ($res = $this->generate_file_cache($work_units, new CssRenderHandler($this->_configuration, $this->_params, $this->fragment_cache, $this->_source_file))){
                 $res = sprintf('<link rel="stylesheet" type="text/css"%s href="%s" />'."\n", $cs, htmlspecialchars($res, ENT_QUOTES));
             }
         }else{
-            $res = $this->generate_content_cache($work_units, new CssRenderHandler($this->_cfg, $this->fragment_cache, $this->_source_file));
+            $res = $this->generate_content_cache($work_units, new CssRenderHandler($this->_configuration, $this->_params, $this->fragment_cache, $this->_source_file));
             $res = sprintf('<style type="text/css"%s>%s</style>'."\n", $cs, $res);
         }
         return $res;
@@ -74,12 +77,12 @@ class CacheRenderer {
 
     private function render_script_units($work_units, $cat){
         if ($work_units[0]['file']){
-            if ($res = $this->generate_file_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->fragment_cache, $this->_source_file))){
+            if ($res = $this->generate_file_cache($work_units, new JavaScriptRenderHandler($this->_params, $this->fragment_cache, $this->_source_file))){
                 $this->rendered_bits[] = array('type' => 'file', 'src' => $res);
                 return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($res, ENT_QUOTES));
             }
         }else{
-            $res = $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_cfg, $this->fragment_cache, $this->_source_file));
+            $res = $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_params, $this->fragment_cache, $this->_source_file));
             if($res) $this->rendered_bits[] = array('type' => 'string', 'content' => $res);
             return sprintf('<script type="text/javascript">%s</script>'."\n", $res);
         }
@@ -88,7 +91,7 @@ class CacheRenderer {
 
     private function generate_content_cache($work_units, CacheRenderHandler $rh){
         $content = implode("\n", array_map(function($u){ return $u['content']; }, $work_units));
-        $key = md5($content.json_encode($this->_cfg));
+        $key = md5($content.json_encode($this->_params));
         if ($d = $this->fragment_cache->get($key)){
             return $d;
         }
@@ -152,13 +155,13 @@ class CacheRenderer {
         }
 
         // not using the actual content for quicker access
-        $key = md5($max . serialize($idents) . json_encode($rh->getConfig()));
+        $key = md5($max . serialize($idents) . json_encode($rh->getParams()));
         $key = $this->content_key_for_mtime_key($key, $work_units);
 
         $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
         $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
 
-        if (file_exists($cfile) && ($rh->getConfig()->getDebugMode() != 2)){
+        if (file_exists($cfile) && ($rh->getParams()->getDebugMode() != 2)){
             return $pub;
         }
 
@@ -209,11 +212,11 @@ class CacheRenderer {
             return null;
         }
 
-        if ($rh->getConfig()->get('write_headers'))
+        if ($rh->getParams()->get('write_headers'))
             $rh->writeHeader($fhc, $files);
 
         $res = true;
-        $merge = !!$rh->getConfig()->get('merge_tags');
+        $merge = !!$rh->getParams()->get('merge_tags');
 
         if ($merge)
             $rh->startWrite();
