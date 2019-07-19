@@ -222,19 +222,7 @@ class CacheRenderer {
             $rh->startWrite();
 
         foreach($files as $file){
-            try{
-                $rh->processFile($fhc, $file);
-            }catch(\Exception $e){
-                trigger_error(sprintf(
-                    "Exception %s while processing %s:\n\n%s",
-                    get_class($e),
-                    $file['file'],
-                    $e->getMessage()
-                ), E_USER_WARNING);
-                $res = false;
-                break;
-            }
-
+            $rh->processFile($fhc, $file);
         }
 
         if ($merge)
