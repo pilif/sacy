@@ -3,11 +3,7 @@
 namespace sacy\internal;
 
 use sacy\Configuration;
-use sacy\internal\CacheRenderHandler;
-use sacy\internal\CssRenderHandler;
 use sacy\Exception;
-use sacy\internal\FileCache;
-use sacy\internal\JavaScriptRenderHandler;
 
 class CacheRenderer {
     private $_params;

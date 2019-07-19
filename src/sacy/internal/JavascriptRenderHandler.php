@@ -2,9 +2,6 @@
 
 namespace sacy\internal;
 
-use sacy\ExternalProcessorRegistry;
-use sacy\internal\ConfiguredRenderHandler;
-
 class JavaScriptRenderHandler extends ConfiguredRenderHandler{
 
     static function willTransformType($type){

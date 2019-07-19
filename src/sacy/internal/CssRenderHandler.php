@@ -4,10 +4,8 @@ namespace sacy\internal;
 
 use sacy\Configuration;
 use sacy\Exception;
-use sacy\ExternalProcessorRegistry;
 use sacy\transforms\Minify_CSS;
 use sacy\transforms\Minify_CSS_UriRewriter;
-use sacy\transforms\PhpSassSacy;
 
 class CssRenderHandler extends ConfiguredRenderHandler{
     private $to_process = [];

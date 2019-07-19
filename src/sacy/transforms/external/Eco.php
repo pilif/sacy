@@ -2,7 +2,6 @@
 
 namespace sacy\transforms\external;
 
-use sacy\Exception;
 use sacy\internal\ExternalProcessor;
 
 class Eco extends ExternalProcessor{
