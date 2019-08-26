@@ -73,12 +73,12 @@ class CacheRenderer {
 
     private function render_script_units($work_units, $cat){
         if ($work_units[0]['file']){
-            if ($res = $this->generate_file_cache($work_units, new JavaScriptRenderHandler($this->_params, $this->fragment_cache, $this->_source_file))){
+            if ($res = $this->generate_file_cache($work_units, new JavaScriptRenderHandler($this->_configuration, $this->_params, $this->fragment_cache, $this->_source_file))){
                 $this->rendered_bits[] = array('type' => 'file', 'src' => $res);
                 return sprintf('<script type="text/javascript" src="%s"></script>'."\n", htmlspecialchars($res, ENT_QUOTES));
             }
         }else{
-            $res = $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_params, $this->fragment_cache, $this->_source_file));
+            $res = $this->generate_content_cache($work_units, new JavaScriptRenderHandler($this->_configuration, $this->_params, $this->fragment_cache, $this->_source_file));
             if($res) $this->rendered_bits[] = array('type' => 'string', 'content' => $res);
             return sprintf('<script type="text/javascript">%s</script>'."\n", $res);
         }
