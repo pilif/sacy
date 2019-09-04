@@ -9,7 +9,7 @@ class BlockParams implements \JsonSerializable {
     private $params;
 
     public function get($key){
-        return $this->params[$key];
+        return $this->params[$key] ?? null;
     }
 
     public function __construct(Configuration $config, $params = null){

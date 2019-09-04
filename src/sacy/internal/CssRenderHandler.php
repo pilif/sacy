@@ -117,7 +117,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
 
         if ($this->getConfig()->getTransformRepository()->supportsType($work_unit['type'])){
             $opts = array();
-            if ($work_unit['paths'])
+            if (isset($work_unit['paths']))
                 $opts['library_path'] = $work_unit['paths'];
             $opts['plugin_files'] = $this->getParams()->get('sassc_plugins');
             $opts['env'] = $this->getParams()->get('env');
