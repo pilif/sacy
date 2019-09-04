@@ -46,7 +46,7 @@ class BlockParams implements \JsonSerializable {
             throw new Exception("Invalid setting for query_strings: ".$params['query_strings']);
         if (isset($params['write_headers']) && !in_array($params['write_headers'], array(true, false), true))
             throw new Exception("Invalid setting for write_headers: ".$params['write_headers']);
-        $params['merge_tags'] = !!$params['merge_tags'];
+        $params['merge_tags'] = !empty($params['merge_tags']);
 
         $this->params = array_merge($this->params, $params);
     }

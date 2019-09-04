@@ -93,7 +93,7 @@ class Sacy {
                         'attrdata' => $m[0],
                         'index' => $ms[0][$i][1],
                         'tagdata' => $ms[0][$i][0],
-                        'content' => $ms[2][$i][0],
+                        'content' => $ms[2][$i][0] ?? '',
                         'page_order' => $aindex++
                     );
                 }
