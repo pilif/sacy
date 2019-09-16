@@ -81,12 +81,12 @@ class CompatTransformRepository implements TransformRepository {
         return array_key_exists($type, $this->known_transforms);
     }
 
-    public function getTransformerForType(string $type): Transformer {
-        return $this->known_transforms[$type];
+    public function getTransformerForType(string $type): ?Transformer {
+        return $this->known_transforms[$type] ?? null;
     }
 
-    public function getCompressorForType($type): Transformer {
-        return $this->known_compressors[$type];
+    public function getCompressorForType($type): ?Transformer {
+        return $this->known_compressors[$type] ?? null;
     }
 
     public function getSupportedTypes(): array {
