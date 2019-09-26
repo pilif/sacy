@@ -106,7 +106,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
     function getOutput($work_unit){
         $debug = $this->getParams()->getDebugMode() == 3;
 
-        if ($work_unit['file']){
+        if (!empty($work_unit['file'])){
             $css = @file_get_contents($work_unit['file']);
             if (!$css) return "/* error accessing file */";
             $source_file = $work_unit['file'];
@@ -123,7 +123,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $opts['env'] = $this->getParams()->get('env');
             $opts['document_root'] = $this->getParams()->get('server_params')['DOCUMENT_ROOT'];
             $t = $this->getConfig()->getTransformRepository()->getTransformerForType($work_unit['type']);
-            $css = $t ? $t->transform($work_unit['content'], $work_unit['file'], $opts) : $work_unit['content'];
+            $css = $t ? $t->transform($work_unit['content'] ?? null, $work_unit['file'] ?? null, $opts) : $work_unit['content'];
         }
 
         if ($debug){
