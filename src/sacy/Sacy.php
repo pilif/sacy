@@ -113,9 +113,9 @@ class Sacy {
 
         $render = array();
         $category = function($work_unit){
-            return implode('', array($work_unit['group'], $work_unit['tag'], !!$work_unit['file']));
+            return implode('', array($work_unit['group'] ?? null, $work_unit['tag'] ?? null, !empty($work_unit['file'])));
         };
-        $curr_cat = $category($work_units[0]);
+        $curr_cat = $category($work_units[0] ?? null);
 
         $entry = null;
         $res = null;
