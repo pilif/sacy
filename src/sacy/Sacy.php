@@ -118,6 +118,7 @@ class Sacy {
         $curr_cat = $category($work_units[0]);
 
         $entry = null;
+        $res = null;
         foreach($work_units as $i => $entry){
             $cg = $category($entry);
 
