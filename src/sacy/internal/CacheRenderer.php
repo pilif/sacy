@@ -151,7 +151,7 @@ class CacheRenderer {
         }
 
         // not using the actual content for quicker access
-        $key = md5($max . serialize($idents) . json_encode($rh->getParams()));
+        $key = ($max . serialize($idents) . json_encode($rh->getParams()));
         $key = $this->content_key_for_mtime_key($key, $work_units);
 
         $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();

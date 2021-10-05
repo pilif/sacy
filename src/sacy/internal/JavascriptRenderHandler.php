@@ -15,7 +15,7 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy javascript cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($work_units as $file){
-            fprintf($fh, "    - %s\n", str_replace($this->getParams()->get('server_params')['DOCUMENT_ROOT'], '<root>', $file['file']));
+            fprintf($fh, "    - %s\n", str_replace($this->getConfig()->getServerParams()['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -32,7 +32,7 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
         }
 
         if ($t = ($this->getConfig()->getTransformRepository()->getTransformerForType($work_unit['type']))){
-            $js = $t->transform($js, $source_file, ['document_root' => $this->getParams()->get('server_params')['DOCUMENT_ROOT']]);
+            $js = $t->transform($js, $source_file, ['document_root' => $this->getConfig()->getServerParams()['DOCUMENT_ROOT']]);
         }
 
         if ($debug){
@@ -48,7 +48,7 @@ class JavaScriptRenderHandler extends ConfiguredRenderHandler{
 
     function processFile($fh, $work_unit){
         if ($this->getParams()->get('write_headers'))
-            fprintf($fh, "\n/* %s */\n", str_replace($this->getParams()->get('server_params')['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+            fprintf($fh, "\n/* %s */\n", str_replace($this->getConfig()->getServerParams()['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
         fwrite($fh, $this->getOutput($work_unit));
     }
 

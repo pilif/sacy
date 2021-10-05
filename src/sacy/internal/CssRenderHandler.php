@@ -51,7 +51,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         fwrite($fh, "/*\nsacy css cache dump \n\n");
         fwrite($fh, "This dump has been created from the following files:\n");
         foreach($work_units as $file){
-            fprintf($fh, "    - %s\n", str_replace($this->getParams()->get('server_params')['DOCUMENT_ROOT'], '<root>', $file['file']));
+            fprintf($fh, "    - %s\n", str_replace($this->getConfig()->getServerParams()['DOCUMENT_ROOT'], '<root>', $file['file']));
         }
         fwrite($fh, "*/\n\n");
     }
@@ -68,7 +68,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $content = Minify_CSS_UriRewriter::rewrite(
                 $content,
                 dirname($work_unit['file']),
-                $this->getParams()->get('server_params')['DOCUMENT_ROOT'],
+                $this->getConfig()->getServerParams()['DOCUMENT_ROOT'],
                 array(),
                 true
             );
@@ -80,7 +80,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             );
         }else{
             if ($this->getParams()->get('write_headers'))
-               fprintf($fh, "\n/* %s */\n", str_replace($this->getParams()->get('server_params')['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
+               fprintf($fh, "\n/* %s */\n", str_replace($this->getConfig()->getServerParams()['DOCUMENT_ROOT'], '<root>', $work_unit['file']));
 
             fwrite($fh, $this->getOutput($work_unit));
         }
@@ -121,7 +121,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
                 $opts['library_path'] = $work_unit['paths'];
             $opts['plugin_files'] = $this->getParams()->get('sassc_plugins');
             $opts['env'] = $this->getParams()->get('env');
-            $opts['document_root'] = $this->getParams()->get('server_params')['DOCUMENT_ROOT'];
+            $opts['document_root'] = $this->getConfig()->getServerParams()['DOCUMENT_ROOT'];
             $t = $this->getConfig()->getTransformRepository()->getTransformerForType($work_unit['type']);
             $css = $t ? $t->transform($work_unit['content'] ?? null, $work_unit['file'] ?? null, $opts) : $work_unit['content'];
         }
@@ -130,13 +130,13 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             return Minify_CSS_UriRewriter::rewrite(
                 $css,
                 dirname($source_file),
-                $this->getParams()->get('server_params')['DOCUMENT_ROOT'],
+                $this->getConfig()->getServerParams()['DOCUMENT_ROOT'],
                 array()
             );
         }else{
             return Minify_CSS::minify($css, array(
                 'currentDir' => dirname($source_file),
-                'docRoot' => $this->getParams()->get('server_params')['DOCUMENT_ROOT'],
+                'docRoot' => $this->getConfig()->getServerParams()['DOCUMENT_ROOT'],
             ));
         }
     }
@@ -172,7 +172,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
         }
 
         if ($f[0] == '/') {
-            $f = $this->getParams()->get('server_params')['DOCUMENT_ROOT']. $f;
+            $f = $this->getConfig()->getServerParams()['DOCUMENT_ROOT']. $f;
         }else{
             $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
         }

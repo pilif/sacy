@@ -73,9 +73,9 @@ class WorkUnitExtractor {
             if (isset($u['query'])) return false;
 
         $ref = $u['path'];
-        $path = array($this->_params->get('server_params')['DOCUMENT_ROOT']);
+        $path = array($this->config->getServerParams()['DOCUMENT_ROOT']);
         if ($ref[0] != '/')
-            $path[] = $this->_params->get('server_params')['PHP_SELF'];
+            $path[] = $this->config->getServerParams()['PHP_SELF'];
         $path[] = $ref;
         return realpath(implode(DIRECTORY_SEPARATOR, $path));
 

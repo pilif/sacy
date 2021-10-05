@@ -108,7 +108,7 @@ class Sacy {
         $ex = new WorkUnitExtractor($this->config, $params);
         $work_units = $ex->getAcceptedWorkUnits($tags);
 
-        $renderer = new CacheRenderer($this->config, $params, $params->get('server_params')['SCRIPT_FILENAME'], $fragment_cache);
+        $renderer = new CacheRenderer($this->config, $params, $this->config->getServerParams()['SCRIPT_FILENAME'], $fragment_cache);
         $patched_content = $content;
 
         $render = array();
