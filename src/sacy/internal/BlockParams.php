@@ -50,7 +50,8 @@ class BlockParams implements \JsonSerializable {
         $this->params = array_merge($this->params, $params);
     }
 
-    function jsonSerialize(){
+    #[\ReturnTypeWillChange]
+    function jsonSerialize() {
         return $this->params;
     }
 }
