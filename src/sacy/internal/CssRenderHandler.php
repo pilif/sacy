@@ -29,8 +29,8 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
 
             if ($create_tables) {
-                $pdo->exec('create table depcache (source text not null, mtime_source integer not null, mtime integer not null, depends_on text not null, primary key (source, depends_on))');
-                $pdo->exec('create index idx_source on depcache(source, mtime_source)');
+                $pdo->exec('create table if not exists depcache (source text not null, mtime_source integer not null, mtime integer not null, depends_on text not null, primary key (source, depends_on))');
+                $pdo->exec('create index if not exists idx_source on depcache(source, mtime_source)');
             } else {
                 $pdo = new \PDO("sqlite:$cache_file");
             }
