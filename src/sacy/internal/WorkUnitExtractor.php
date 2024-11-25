@@ -14,6 +14,7 @@ use sacy\Exception;
 
 class WorkUnitExtractor {
     private $_params;
+    private $config;
 
     function __construct(Configuration $cfg, BlockParams $params) {
         $this->_params = $params;
