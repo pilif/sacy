@@ -142,7 +142,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
     }
 
     private function extract_import_file($parent_type, $parent_file, $cssdata){
-        $f = null;
+        $f = '';
         if (preg_match('#^\s*url\((["\'])([^\1]+)\1#', $cssdata, $matches)){
             $f = $matches[2];
         }elseif(preg_match('#^\s*(["\'])([^\1]+)\1#', $cssdata, $matches)){
@@ -171,7 +171,7 @@ class CssRenderHandler extends ConfiguredRenderHandler{
             return null;
         }
 
-        if ($f[0] == '/') {
+        if ($f && $f[0] == '/') {
             $f = $this->getConfig()->getServerParams()['DOCUMENT_ROOT']. $f;
         }else{
             $f = $path_info['dirname'] . DIRECTORY_SEPARATOR . $f;
