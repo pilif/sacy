@@ -162,7 +162,9 @@ class CacheRenderer {
             return $pub;
         }
 
-        $this->write_cache($cfile, $work_units, $rh);
+        if (false === $this->write_cache($cfile, $work_units, $rh)) {
+            return false;
+        }
 
         return $pub;
     }
