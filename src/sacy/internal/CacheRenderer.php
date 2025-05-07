@@ -179,7 +179,6 @@ class CacheRenderer {
 
             if (rename($tmpfile, $cfile)) {
                 chmod($cfile, 0644);
-                touch($cfile, $ts);
                 clearstatcache();
             } else {
                 trigger_error("Cannot write file: $cfile", E_USER_WARNING);
@@ -196,9 +195,7 @@ class CacheRenderer {
         file_put_contents($tmp_compressed, gzencode(file_get_contents($tmpfile), 9));
 
         $compressed = "$cfile.gz";
-        if (rename($tmp_compressed, $compressed)) {
-            touch($compressed, $ts);
-        }else{
+        if (!@rename($tmp_compressed, $compressed)) {
             trigger_error("Cannot write compressed file: $compressed", E_USER_WARNING);
         }
     }
