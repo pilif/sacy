@@ -157,6 +157,7 @@ class CacheRenderer {
         $cfile = ASSET_COMPILE_OUTPUT_DIR . DIRECTORY_SEPARATOR ."$ident-$key".$rh->getFileExtension();
         $pub = ASSET_COMPILE_URL_ROOT . "/$ident-$key".$rh->getFileExtension();
 
+        clearstatcache();
         if (file_exists($cfile) && ($rh->getParams()->getDebugMode() != 2)){
             return $pub;
         }
@@ -177,6 +178,7 @@ class CacheRenderer {
             if (rename($tmpfile, $cfile)) {
                 chmod($cfile, 0644);
                 touch($cfile, $ts);
+                clearstatcache();
             } else {
                 trigger_error("Cannot write file: $cfile", E_USER_WARNING);
             }
