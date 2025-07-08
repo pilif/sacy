@@ -13,7 +13,7 @@ class Sacy {
 
     private $config;
 
-    static function registerGlobalCompatHandler(Configuration $config=null){
+    static function registerGlobalCompatHandler(?Configuration $config=null){
         if (static::$instance !== null) return;
         static::$instance = new static($config ?? new CompatConfiguration());
 
